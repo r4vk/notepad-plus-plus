@@ -17,3 +17,4 @@
 - Zaktualizowano `README.md`, aby przedstawić repozytorium jako projekt portu Notepad++ na macOS, podkreślając strategię UI/UX, dokumentację oraz wymogi jakościowe i testowe.
 - Przebudowano obsługę awaryjnego zapisu w `winmain.cpp`, korzystając z `npp::platform::pathFor`, `combinePath` i `ensureDirectoryExists` zamiast `GetTempPath`, aby mechanizm odzyskiwania dokumentów działał na macOS i innych systemach.
 - Wprowadzono konfigurację testów jednostkowych Catch2 (`tests/unit/CMakeLists.txt`) oraz pierwszy pakiet testów dla modułu platformowego (`tests/unit/platform/test_path_provider.cpp`), zapewniając walidację operacji na ścieżkach i plikach niezależnie od systemu operacyjnego.
+- Skonfigurowano workflow GitHub Actions `macOS Port CI` uruchamiający budowę i testy modułów platformowych na hostach macOS, wprowadzając automatyczną walidację cross-platform oraz aktualizując plan działań o kolejne etapy publikacji pakietów `.app`.

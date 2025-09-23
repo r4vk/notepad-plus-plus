@@ -12,7 +12,8 @@
 - "Zweryfikować, czy wersje Scintilla i Lexilla w repozytorium mają aktualne wsparcie dla Cocoa/Qt i w razie potrzeby zaplanować aktualizację lub dostosowanie (+)"
 - "Zidentyfikować biblioteki zastępujące Win32 API (np. Core Foundation, AppKit, LaunchServices) oraz ustalić sposób ich linkowania dla architektur x86_64 i arm64 (+)"
 - "Przygotować konfigurację środowiska developerskiego (Xcode, clang, narzędzia CLI) oraz skrypty bootstrap dla deweloperów macOS (+)"
-- "Stworzyć pipeline GitHub Actions/CI uruchamiający budowę i testy na hostach macOS, z artefaktami w formie pakietów .app"
+- "Skonfigurować pipeline GitHub Actions/CI uruchamiający testy warstwy platformowej na hostach macOS (+)"
+- "Rozszerzyć pipeline macOS o budowę pakietu .app i publikację artefaktów"
 
 ## Refaktoryzacja warstwy bazowej i abstrakcje systemowe
 - "Wydzielić moduły logiki niezależnej od UI (edytor, zarządzanie plikami, ustawienia) z PowerEditor/src do bibliotek możliwych do wielokrotnego użycia"

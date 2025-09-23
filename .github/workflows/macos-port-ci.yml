@@ -1,0 +1,29 @@
+name: macOS Port CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  unit-tests:
+    name: Unit tests on macOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure platform unit tests
+        run: cmake -S tests/unit -B build-tests -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build platform unit tests
+        run: cmake --build build-tests --config Release
+
+      - name: Run platform unit tests
+        run: ctest --test-dir build-tests --output-on-failure --build-config Release
