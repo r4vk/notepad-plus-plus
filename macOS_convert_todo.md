@@ -58,7 +58,7 @@
 - "Zaktualizować dokumentację użytkownika i dewelopera o instrukcje instalacji, skróty klawiszowe i ograniczenia platformowe"
 
 ## Plan testów i jakości
-- "Wybrać framework testów jednostkowych (GoogleTest / Catch2) z konfiguracją multiplatformową i integracją z CTest"
+- "Wybrać framework testów jednostkowych (GoogleTest / Catch2) z konfiguracją multiplatformową i integracją z CTest (+)"
 - "Stworzyć zestaw testów jednostkowych dla modułu zarządzania dokumentami (otwieranie/zapisywanie, kodowania, EOL, BOM)"
 - "Przygotować testy jednostkowe dla parsera makr i silnika odtwarzania (w tym obsługa skrótów macOS)"
 - "Zaimplementować testy dla logiki wyszukiwania/zamiany z wykorzystaniem Boost.Regex oraz weryfikacji działań w trybach wielokursorowych"

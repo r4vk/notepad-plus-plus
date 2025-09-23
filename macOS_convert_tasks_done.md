@@ -15,3 +15,5 @@
 - Przygotowano dokument `docs/macos/system_services_matrix.md` mapujący zależności Win32 na odpowiedniki w macOS wraz ze strategią użycia w warstwie `npp::platform` i priorytetami integracji.
 - Stworzono przewodnik `docs/macos/developer_environment.md` opisujący wymagane narzędzia, konfigurację repozytorium, procedurę bootstrap i walidację jakości dla zespołu pracującego nad portem macOS; oznaczono odpowiadające zadania w planie jako wykonane.
 - Zaktualizowano `README.md`, aby przedstawić repozytorium jako projekt portu Notepad++ na macOS, podkreślając strategię UI/UX, dokumentację oraz wymogi jakościowe i testowe.
+- Przebudowano obsługę awaryjnego zapisu w `winmain.cpp`, korzystając z `npp::platform::pathFor`, `combinePath` i `ensureDirectoryExists` zamiast `GetTempPath`, aby mechanizm odzyskiwania dokumentów działał na macOS i innych systemach.
+- Wprowadzono konfigurację testów jednostkowych Catch2 (`tests/unit/CMakeLists.txt`) oraz pierwszy pakiet testów dla modułu platformowego (`tests/unit/platform/test_path_provider.cpp`), zapewniając walidację operacji na ścieżkach i plikach niezależnie od systemu operacyjnego.
