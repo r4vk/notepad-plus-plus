@@ -4,8 +4,8 @@
 - "Przygotować przegląd architektury PowerEditor/src oraz zależności w katalogach scintilla i lexilla, aby sklasyfikować elementy przenośne i ściśle związane z Win32 (+)"
 - "Sporządzić listę funkcji systemowych Windows (shell, rejestr, COM, powiadomienia, udostępnianie plików, drukowanie), z których korzysta Notepad++ i wskazać ich odpowiedniki w macOS (+)"
 - "Przygotować dokument z analizą ryzyka i potencjalnych ograniczeń funkcjonalnych podczas portu do macOS (np. brak wsparcia dla niektórych pluginów) (+)"
-- "Zdecydować o strategii interfejsu użytkownika: natywne Cocoa vs. wieloplatformowy toolkit (Qt/wxWidgets) wraz z analizą kosztów migracji i wpływu na istniejące rozszerzenia"
-- "Opracować harmonogram iteracyjnego portu (etapy: przygotowanie core, interfejs, integracje systemowe, beta) oraz kryteria wejścia/wyjścia dla każdego etapu"
+- "Zdecydować o strategii interfejsu użytkownika: natywne Cocoa vs. wieloplatformowy toolkit (Qt/wxWidgets) wraz z analizą kosztów migracji i wpływu na istniejące rozszerzenia (+)"
+- "Opracować harmonogram iteracyjnego portu (etapy: przygotowanie core, interfejs, integracje systemowe, beta) oraz kryteria wejścia/wyjścia dla każdego etapu (+)"
 
 ## Przygotowanie środowiska budowy i zależności
 - "Zaprojektować nowy system budowania obsługujący macOS (preferencyjnie CMake), łączący kompilację PowerEditor, Scintilla, Lexilla i zależności zewnętrzne (+)"

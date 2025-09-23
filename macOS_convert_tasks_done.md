@@ -7,3 +7,5 @@
 - Opracowano dokument `docs/macos/build_system_plan.md` opisujący podział projektów CMake, cele platformowe (Windows/macOS), plan tworzenia pakietu `.app` oraz integrację CI, jednocześnie potwierdzając dostępność backendu Cocoa w Scintilli i neutralny platformowo kod Lexilli.
 - Dodano moduł `Platform/FileSystem` zapewniający wieloplatformowe operacje na ścieżkach (łączenie, weryfikacja i usuwanie plików/katalogów) oraz włączono go do konfiguracji CMake i projektu Visual Studio.
 - Przebudowano obsługę katalogu chmury w `NppParameters`, zastępując bezpośrednie wywołania WinAPI nowym API platformowym `combinePath`, `ensureDirectoryExists`, `fileExists` i `removeFile`, aby ujednolicić przygotowanie ścieżek pod macOS.
+- Przygotowano dokument `docs/macos/ui_strategy.md` porównujący Cocoa i toolkity wieloplatformowe, rekomendujący natywne AppKit oraz plan migracji UI z warstwą abstrakcji `npp::ui` i mostkami eventów.
+- Opracowano roadmapę `docs/macos/port_roadmap.md` z fazami iteracyjnego portu, kamieniami milowymi i wskaźnikami jakości, aktualizując plan `macOS_convert_todo.md` o zakończone zadanie harmonogramu.
