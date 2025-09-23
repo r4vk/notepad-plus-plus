@@ -14,3 +14,4 @@
 - Rozszerzono moduł `Platform/PathProvider` o katalog tymczasowy (`KnownDirectory::Temporary`) i zintegrowano go z logiką zapisu w `Buffer.cpp`, eliminując bezpośrednie wywołania `GetTempPath` oraz zastępując obliczanie znaczników czasu implementacją w `std::chrono` zgodną z macOS.
 - Przygotowano dokument `docs/macos/system_services_matrix.md` mapujący zależności Win32 na odpowiedniki w macOS wraz ze strategią użycia w warstwie `npp::platform` i priorytetami integracji.
 - Stworzono przewodnik `docs/macos/developer_environment.md` opisujący wymagane narzędzia, konfigurację repozytorium, procedurę bootstrap i walidację jakości dla zespołu pracującego nad portem macOS; oznaczono odpowiadające zadania w planie jako wykonane.
+- Zaktualizowano `README.md`, aby przedstawić repozytorium jako projekt portu Notepad++ na macOS, podkreślając strategię UI/UX, dokumentację oraz wymogi jakościowe i testowe.
