@@ -20,9 +20,12 @@
 #include <fstream>
 #include <string>
 #include <cctype>
+#ifdef _WIN32
 #include <shlobj.h>
 #include <shlwapi.h>
+#endif
 #include "pluginsAdmin.h"
+#include "Parameters.h"
 #include "ScintillaEditView.h"
 #include "localization.h"
 #include "Processus.h"
@@ -213,7 +216,7 @@ void PluginsAdminDlg::collectNppCurrentStatusInfos()
 
 	_nppCurrentStatus._isAppDataPluginsAllowed = ::SendMessage(_hParent, NPPM_GETAPPDATAPLUGINSALLOWED, 0, 0) == TRUE;
 	_nppCurrentStatus._appdataPath = nppParam.getAppDataNppDir();
-	wstring programFilesPath = NppParameters::getSpecialFolderLocation(CSIDL_PROGRAM_FILES);
+    wstring programFilesPath = NppParameters::getSpecialFolderLocation(npp::platform::KnownDirectory::ProgramFiles);
 	_nppCurrentStatus._isInProgramFiles = (_nppCurrentStatus._nppInstallPath.find(programFilesPath) == 0);
 
 }

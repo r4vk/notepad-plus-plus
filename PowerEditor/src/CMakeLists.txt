@@ -37,13 +37,14 @@ SET(projIncludDir	../../scintilla/include/
 					./WinControls/Grid/
 					./WinControls/ContextMenu/
 					./MISC/PluginsManager/
-					./WinControls/Preference/
-					./WinControls/WindowsDlg/
-					./WinControls/TaskList/
-					./WinControls/DockingWnd/
-					./WinControls/TreeView/
-					./WinControls/ToolTip/
-					./MISC/Exception/
+                                        ./WinControls/Preference/
+                                        ./WinControls/WindowsDlg/
+                                        ./WinControls/TaskList/
+                                        ./WinControls/DockingWnd/
+                                        ./WinControls/TreeView/
+                                        ./WinControls/ToolTip/
+                                        ./Platform/
+                                        ./MISC/Exception/
 					./MISC/Common/
 					./TinyXml/tinyXmlA/
 					./WinControls/AnsiCharPanel/
@@ -89,9 +90,10 @@ SET(src_files
 			./WinControls/ColourPicker/ColourPicker.cpp
 			./WinControls/ColourPicker/ColourPopup.cpp
 			./ScintillaComponent/columnEditor.cpp
-			./MISC/Common/Common.cpp
-			./MISC/Common/FileInterface.cpp
-			./MISC/Common/SortLocale.cpp
+                        ./MISC/Common/Common.cpp
+                        ./MISC/Common/FileInterface.cpp
+                        ./MISC/Common/SortLocale.cpp
+                        ./Platform/PathProvider.cpp
 			./WinControls/ContextMenu/ContextMenu.cpp
 			./WinControls/OpenSaveFileDialog/CustomFileDialog.cpp
 			./WinControls/PluginsAdmin/pluginsAdmin.cpp

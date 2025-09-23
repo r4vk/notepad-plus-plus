@@ -130,6 +130,7 @@
     <ClCompile Include="..\src\ScintillaComponent\columnEditor.cpp" />
     <ClCompile Include="..\src\MISC\Common\Common.cpp" />
     <ClCompile Include="..\src\MISC\Common\FileInterface.cpp" />
+    <ClCompile Include="..\src\Platform\PathProvider.cpp" />
     <ClCompile Include="..\src\WinControls\ContextMenu\ContextMenu.cpp" />
     <ClCompile Include="..\src\WinControls\OpenSaveFileDialog\CustomFileDialog.cpp" />
     <ClCompile Include="..\src\WinControls\PluginsAdmin\pluginsAdmin.cpp" />
@@ -249,6 +250,7 @@
     <ClInclude Include="..\src\localizationString.h" />
     <ClInclude Include="..\src\MISC\Common\Sorters.h" />
     <ClInclude Include="..\src\MISC\Common\SortLocale.h" />
+    <ClInclude Include="..\src\Platform\PathProvider.h" />
     <ClInclude Include="..\src\MISC\Common\verifySignedfile.h" />
     <ClInclude Include="..\src\MISC\md5\md5.h" />
     <ClInclude Include="..\src\MISC\md5\md5Dlgs.h" />

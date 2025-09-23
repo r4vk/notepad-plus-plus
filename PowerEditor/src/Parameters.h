@@ -34,6 +34,7 @@
 #include "ILexer.h"
 #include "Lexilla.h"
 #include "DockingCont.h"
+#include "Platform/PathProvider.h"
 
 #ifdef _WIN64
 
@@ -1906,7 +1907,7 @@ public:
 
 	DPIManager _dpiManager;
 
-	std::wstring static getSpecialFolderLocation(int folderKind);
+        static std::wstring getSpecialFolderLocation(npp::platform::KnownDirectory folderKind);
 
 	void setUdlXmlDirtyFromIndex(size_t i);
 	void setUdlXmlDirtyFromXmlDoc(const TiXmlDocument* xmlDoc);

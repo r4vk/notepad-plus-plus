@@ -15,8 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <time.h>
+#ifdef _WIN32
 #include <shlwapi.h>
 #include <shlobj.h>
+#endif
 #include "Parameters.h"
 #include "FileDialog.h"
 #include "ScintillaEditView.h"
@@ -945,17 +947,9 @@ bool NppParameters::reloadLang()
 	return loadOkay;
 }
 
-generic_string NppParameters::getSpecialFolderLocation(int folderKind)
+generic_string NppParameters::getSpecialFolderLocation(npp::platform::KnownDirectory folderKind)
 {
-	TCHAR path[MAX_PATH];
-	const HRESULT specialLocationResult = SHGetFolderPath(nullptr, folderKind, nullptr, SHGFP_TYPE_CURRENT, path);
-
-	generic_string result;
-	if (SUCCEEDED(specialLocationResult))
-	{
-		result = path;
-	}
-	return result;
+        return npp::platform::pathFor(folderKind);
 }
 
 
@@ -964,10 +958,13 @@ generic_string NppParameters::getSettingsFolder()
 	if (_isLocal)
 		return _nppPath;
 
-	generic_string settingsFolderPath = getSpecialFolderLocation(CSIDL_APPDATA);
+        generic_string settingsFolderPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ApplicationSupport);
 
-	if (settingsFolderPath.empty())
-		return _nppPath;
+        if (settingsFolderPath.empty())
+                settingsFolderPath = getSpecialFolderLocation(npp::platform::KnownDirectory::RoamingData);
+
+        if (settingsFolderPath.empty())
+                return _nppPath;
 
 	PathAppend(settingsFolderPath, TEXT("Notepad++"));
 	return settingsFolderPath;
@@ -997,7 +994,7 @@ bool NppParameters::load()
 		// We check if OS is Vista or greater version
 		if (_winVersion >= WV_VISTA)
 		{
-			generic_string progPath = getSpecialFolderLocation(CSIDL_PROGRAM_FILES);
+                        generic_string progPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ProgramFiles);
 			TCHAR nppDirLocation[MAX_PATH];
 			lstrcpy(nppDirLocation, _nppPath.c_str());
 			::PathRemoveFileSpec(nppDirLocation);
@@ -1011,23 +1008,27 @@ bool NppParameters::load()
 	{
 		_userPath = _nppPath;
 	}
-	else
-	{
-		_userPath = getSpecialFolderLocation(CSIDL_APPDATA);
+        else
+        {
+                _userPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ApplicationSupport);
+                if (_userPath.empty())
+                        _userPath = getSpecialFolderLocation(npp::platform::KnownDirectory::RoamingData);
 
-		PathAppend(_userPath, TEXT("Notepad++"));
-		_appdataNppDir = _userPath;
+                PathAppend(_userPath, TEXT("Notepad++"));
+                _appdataNppDir = _userPath;
 
-		// Plugin System V1
-		if (!PathFileExists(_userPath.c_str()))
-			::CreateDirectory(_userPath.c_str(), NULL);
+                // Plugin System V1
+                if (!PathFileExists(_userPath.c_str()))
+                        ::CreateDirectory(_userPath.c_str(), NULL);
 
-		// Plugin System V2
-		_localAppdataNppDir = getSpecialFolderLocation(CSIDL_LOCAL_APPDATA);
-		PathAppend(_localAppdataNppDir, TEXT("Notepad++"));
-		if (!PathFileExists(_localAppdataNppDir.c_str()))
-			::CreateDirectory(_localAppdataNppDir.c_str(), NULL);
-	}
+                // Plugin System V2
+                _localAppdataNppDir = getSpecialFolderLocation(npp::platform::KnownDirectory::LocalData);
+                if (_localAppdataNppDir.empty())
+                        _localAppdataNppDir = _userPath;
+                PathAppend(_localAppdataNppDir, TEXT("Notepad++"));
+                if (!PathFileExists(_localAppdataNppDir.c_str()))
+                        ::CreateDirectory(_localAppdataNppDir.c_str(), NULL);
+        }
 	
 
 
