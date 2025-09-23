@@ -10,7 +10,8 @@ namespace npp::platform
         RoamingData,
         LocalData,
         ProgramFiles,
-        ApplicationSupport
+        ApplicationSupport,
+        Temporary
     };
 
     std::wstring pathFor(KnownDirectory directory);

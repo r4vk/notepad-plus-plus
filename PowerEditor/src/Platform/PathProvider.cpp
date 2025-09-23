@@ -24,6 +24,18 @@ namespace npp::platform
             }
             return {};
         }
+
+        std::wstring queryTemporaryDirectory()
+        {
+            wchar_t buffer[MAX_PATH]{};
+            const DWORD length = ::GetTempPathW(MAX_PATH, buffer);
+            if (length == 0)
+            {
+                return {};
+            }
+
+            return std::wstring(buffer, buffer + length);
+        }
     #else
         std::filesystem::path fetchHomePath()
         {
@@ -38,6 +50,31 @@ namespace npp::platform
             }
 
             return {};
+        }
+
+        std::filesystem::path fetchTemporaryDirectory()
+        {
+            const char* const candidates[] = { "TMPDIR", "TMP", "TEMP" };
+            for (const char* name : candidates)
+            {
+                if (const char* value = std::getenv(name); value && *value)
+                {
+                    return std::filesystem::path(value);
+                }
+            }
+
+        #if defined(__APPLE__)
+            return std::filesystem::path("/tmp");
+        #else
+            try
+            {
+                return std::filesystem::temp_directory_path();
+            }
+            catch (const std::filesystem::filesystem_error&)
+            {
+                return {};
+            }
+        #endif
         }
     #endif
     } // namespace
@@ -57,6 +94,8 @@ namespace npp::platform
                 return queryShellFolder(CSIDL_PROGRAM_FILES);
             case KnownDirectory::ApplicationSupport:
                 return queryShellFolder(CSIDL_APPDATA);
+            case KnownDirectory::Temporary:
+                return queryTemporaryDirectory();
         }
         return {};
     #else
@@ -94,6 +133,11 @@ namespace npp::platform
     #else
                 return (home / ".config").wstring();
     #endif
+            case KnownDirectory::Temporary:
+            {
+                const auto temporaryDirectory = fetchTemporaryDirectory();
+                return temporaryDirectory.empty() ? std::wstring{} : temporaryDirectory.wstring();
+            }
         }
         return {};
     #endif

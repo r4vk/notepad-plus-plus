@@ -10,8 +10,8 @@
 ## Przygotowanie środowiska budowy i zależności
 - "Zaprojektować nowy system budowania obsługujący macOS (preferencyjnie CMake), łączący kompilację PowerEditor, Scintilla, Lexilla i zależności zewnętrzne (+)"
 - "Zweryfikować, czy wersje Scintilla i Lexilla w repozytorium mają aktualne wsparcie dla Cocoa/Qt i w razie potrzeby zaplanować aktualizację lub dostosowanie (+)"
-- "Zidentyfikować biblioteki zastępujące Win32 API (np. Core Foundation, AppKit, LaunchServices) oraz ustalić sposób ich linkowania dla architektur x86_64 i arm64"
-- "Przygotować konfigurację środowiska developerskiego (Xcode, clang, narzędzia CLI) oraz skrypty bootstrap dla deweloperów macOS"
+- "Zidentyfikować biblioteki zastępujące Win32 API (np. Core Foundation, AppKit, LaunchServices) oraz ustalić sposób ich linkowania dla architektur x86_64 i arm64 (+)"
+- "Przygotować konfigurację środowiska developerskiego (Xcode, clang, narzędzia CLI) oraz skrypty bootstrap dla deweloperów macOS (+)"
 - "Stworzyć pipeline GitHub Actions/CI uruchamiający budowę i testy na hostach macOS, z artefaktami w formie pakietów .app"
 
 ## Refaktoryzacja warstwy bazowej i abstrakcje systemowe
