@@ -93,6 +93,7 @@ SET(src_files
                         ./MISC/Common/Common.cpp
                         ./MISC/Common/FileInterface.cpp
                         ./MISC/Common/SortLocale.cpp
+                        ./Platform/FileSystem.cpp
                         ./Platform/PathProvider.cpp
 			./WinControls/ContextMenu/ContextMenu.cpp
 			./WinControls/OpenSaveFileDialog/CustomFileDialog.cpp

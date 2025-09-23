@@ -20,7 +20,7 @@
 - "Zastąpić bezpośrednie wywołania Win32 (HWND, SendMessage, WNDPROC, SHFileOperation itp.) odpowiednim interfejsem pośredniczącym"
 - "Utworzyć moduł zarządzania preferencjami i profilem użytkownika oparty na ścieżkach macOS (~/Library/Application Support/Notepad++)"
 - "Wprowadzić moduł platformowy dla ścieżek użytkownika (npp::platform::PathProvider) i podpiąć go w NppParameters (+)"
-- "Zastąpić w NppParameters użycie PathFileExists/WinAPI tworzeniem katalogów przez platform::ensureDirectoryExists"
+- "Zastąpić w NppParameters użycie PathFileExists/WinAPI tworzeniem katalogów przez platform::ensureDirectoryExists (+)"
 - "Zaplanować migrację funkcji rejestru Windows na pliki konfiguracyjne/CFPreferences w macOS"
 - "Przygotować alternatywę dla wbudowanego managera aktualizacji opartego o WinInet (np. wykorzystanie URLSession/CFNetwork)"
 

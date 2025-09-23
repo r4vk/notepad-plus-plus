@@ -20,6 +20,7 @@
 #include <shlobj.h>
 #endif
 #include "Parameters.h"
+#include "Platform/FileSystem.h"
 #include "ScintillaEditView.h"
 #include "keys.h"
 #include "localization.h"
@@ -1224,17 +1225,17 @@ bool NppParameters::load()
 	_sessionPath = _userPath; // Session stores the absolute file path, it should never be on cloud
 
 	// Detection cloud settings
-	std::wstring cloudChoicePath{_userPath};
-	cloudChoicePath += L"\\cloud\\choice";
+        const std::wstring cloudDirectory = npp::platform::combinePath(_userPath, L"cloud");
+        const std::wstring cloudChoicePath = npp::platform::combinePath(cloudDirectory, L"choice");
 
-	//
-	// the 2nd priority: Cloud Choice Path
-	//
-	_isCloud = doesFileExist(cloudChoicePath.c_str());
-	if (_isCloud)
-	{
-		// Read cloud choice
-		std::string cloudChoiceStr = getFileContent(cloudChoicePath.c_str());
+        //
+        // the 2nd priority: Cloud Choice Path
+        //
+        _isCloud = npp::platform::fileExists(cloudChoicePath);
+        if (_isCloud)
+        {
+                // Read cloud choice
+                std::string cloudChoiceStr = getFileContent(cloudChoicePath.c_str());
 		WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
 		std::wstring cloudChoiceStrW = wmc.char2wchar(cloudChoiceStr.c_str(), SC_CP_UTF8);
 
@@ -3262,30 +3263,26 @@ LangType NppParameters::getLangFromExt(const wchar_t *ext)
 
 void NppParameters::setCloudChoice(const wchar_t *pathChoice)
 {
-	std::wstring cloudChoicePath = getSettingsFolder();
-	cloudChoicePath += L"\\cloud\\";
+        const std::wstring cloudDirectory = npp::platform::combinePath(getSettingsFolder(), L"cloud");
+        npp::platform::ensureDirectoryExists(cloudDirectory);
 
-	if (!doesDirectoryExist(cloudChoicePath.c_str()))
-	{
-		::CreateDirectory(cloudChoicePath.c_str(), NULL);
-	}
-	cloudChoicePath += L"choice";
+        const std::wstring cloudChoicePath = npp::platform::combinePath(cloudDirectory, L"choice");
 
-	WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
-	std::string cloudPathA = wmc.wchar2char(pathChoice, SC_CP_UTF8);
+        WcharMbcsConvertor& wmc = WcharMbcsConvertor::getInstance();
+        std::string cloudPathA = wmc.wchar2char(pathChoice, SC_CP_UTF8);
 
-	writeFileContent(cloudChoicePath.c_str(), cloudPathA.c_str());
+        writeFileContent(cloudChoicePath.c_str(), cloudPathA.c_str());
 }
 
 void NppParameters::removeCloudChoice()
 {
-	std::wstring cloudChoicePath = getSettingsFolder();
+        const std::wstring cloudChoicePath = npp::platform::combinePath(
+                npp::platform::combinePath(getSettingsFolder(), L"cloud"), L"choice");
 
-	cloudChoicePath += L"\\cloud\\choice";
-	if (doesFileExist(cloudChoicePath.c_str()))
-	{
-		::DeleteFile(cloudChoicePath.c_str());
-	}
+        if (npp::platform::fileExists(cloudChoicePath))
+        {
+                npp::platform::removeFile(cloudChoicePath);
+        }
 }
 
 bool NppParameters::isCloudPathChanged() const
