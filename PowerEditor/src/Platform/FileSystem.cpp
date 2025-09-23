@@ -1,7 +1,12 @@
 #include "Platform/FileSystem.h"
 
 #include <filesystem>
+#include <optional>
 #include <system_error>
+
+#ifdef _WIN32
+    #include <Windows.h>
+#endif
 
 namespace npp::platform
 {
@@ -135,5 +140,56 @@ namespace npp::platform
         {
             return false;
         }
+    }
+
+    std::optional<std::uintmax_t> fileSize(const std::wstring& path)
+    {
+        if (path.empty())
+        {
+            return std::nullopt;
+        }
+
+        try
+        {
+            const auto fsPath = toPath(path);
+            std::error_code ec;
+            const auto size = std::filesystem::file_size(fsPath, ec);
+            if (ec)
+            {
+                return std::nullopt;
+            }
+
+            return size;
+        }
+        catch (const std::filesystem::filesystem_error&)
+        {
+            return std::nullopt;
+        }
+    }
+
+    bool copyFile(const std::wstring& source, const std::wstring& destination, bool failIfExists)
+    {
+        if (source.empty() || destination.empty())
+        {
+            return false;
+        }
+
+#ifdef _WIN32
+        return ::CopyFileW(source.c_str(), destination.c_str(), failIfExists ? TRUE : FALSE) != FALSE;
+#else
+        try
+        {
+            const auto srcPath = toPath(source);
+            const auto dstPath = toPath(destination);
+            const auto options = failIfExists ? std::filesystem::copy_options::none : std::filesystem::copy_options::overwrite_existing;
+            std::error_code ec;
+            const bool copied = std::filesystem::copy_file(srcPath, dstPath, options, ec);
+            return copied && !ec;
+        }
+        catch (const std::filesystem::filesystem_error&)
+        {
+            return false;
+        }
+#endif
     }
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <optional>
 #include <string>
 
 namespace npp::platform
@@ -11,4 +13,8 @@ namespace npp::platform
     bool fileExists(const std::wstring& path);
 
     bool removeFile(const std::wstring& path);
+
+    std::optional<std::uintmax_t> fileSize(const std::wstring& path);
+
+    bool copyFile(const std::wstring& source, const std::wstring& destination, bool failIfExists);
 }

@@ -22,6 +22,7 @@
 - "Utworzyć moduł zarządzania preferencjami i profilem użytkownika oparty na ścieżkach macOS (~/Library/Application Support/Notepad++) (+)"
 - "Wprowadzić moduł platformowy dla ścieżek użytkownika (npp::platform::PathProvider) i podpiąć go w NppParameters (+)"
 - "Zastąpić w NppParameters użycie PathFileExists/WinAPI tworzeniem katalogów przez platform::ensureDirectoryExists (+)"
+- "Abstrahować kopiowanie plików w konfiguracji Notepad++ przez npp::platform::copyFile (+)"
 - "Zaplanować migrację funkcji rejestru Windows na pliki konfiguracyjne/CFPreferences w macOS"
 - "Przygotować alternatywę dla wbudowanego managera aktualizacji opartego o WinInet (np. wykorzystanie URLSession/CFNetwork)"
 

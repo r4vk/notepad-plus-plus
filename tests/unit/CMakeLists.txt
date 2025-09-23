@@ -31,6 +31,7 @@ enable_testing()
 add_executable(npp_platform_tests
     platform/test_path_provider.cpp
     platform/test_settings_locator.cpp
+    platform/test_file_system.cpp
 )
 
 target_link_libraries(npp_platform_tests

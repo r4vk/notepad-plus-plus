@@ -747,7 +747,7 @@ bool LocalizationSwitcher::switchToLang(const wchar_t *lang2switch) const
 	if (langPath.empty())
 		return false;
 
-	return ::CopyFileW(langPath.c_str(), _nativeLangPath.c_str(), FALSE) != FALSE;
+	return npp::platform::copyFile(langPath, _nativeLangPath, false);
 }
 
 
@@ -1131,7 +1131,7 @@ std::wstring NppParameters::getSettingsFolder()
 	if (_isLocal)
 		return _nppPath;
 
-        std::wstring settingsFolderPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ApplicationSupport);
+	std::wstring settingsFolderPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ApplicationSupport);
 
         if (settingsFolderPath.empty())
                 settingsFolderPath = getSpecialFolderLocation(npp::platform::KnownDirectory::RoamingData);
@@ -1165,7 +1165,7 @@ bool NppParameters::load()
 		// We check if OS is Vista or greater version
 		if (_winVersion >= WV_VISTA)
 		{
-                        std::wstring progPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ProgramFiles);
+			std::wstring progPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ProgramFiles);
 			wchar_t nppDirLocation[MAX_PATH];
 			wcscpy_s(nppDirLocation, _nppPath.c_str());
 			::PathRemoveFileSpec(nppDirLocation);
@@ -1175,7 +1175,7 @@ bool NppParameters::load()
 		}
 	}
 
-        const auto settingsDirectories = npp::platform::prepareSettingsDirectories(_nppPath, _isLocal);
+	const auto settingsDirectories = npp::platform::prepareSettingsDirectories(_nppPath, _isLocal);
 
         _userPath = settingsDirectories.userSettingsRoot.empty() ? _nppPath : settingsDirectories.userSettingsRoot;
         _pluginRootDir = settingsDirectories.pluginInstallRoot.empty() ? npp::platform::combinePath(_nppPath, L"plugins") : settingsDirectories.pluginInstallRoot;
@@ -1216,7 +1216,7 @@ bool NppParameters::load()
 	_sessionPath = _userPath; // Session stores the absolute file path, it should never be on cloud
 
 	// Detection cloud settings
-        const std::wstring cloudDirectory = npp::platform::combinePath(_userPath, L"cloud");
+	const std::wstring cloudDirectory = npp::platform::combinePath(_userPath, L"cloud");
         const std::wstring cloudChoicePath = npp::platform::combinePath(cloudDirectory, L"choice");
 
         //
@@ -1269,39 +1269,35 @@ bool NppParameters::load()
 	std::wstring langs_xml_path(_userPath);
 	pathAppend(langs_xml_path, L"langs.xml");
 
-	BOOL doRecover = FALSE;
-	if (doesFileExist(langs_xml_path.c_str()))
-	{
-		WIN32_FILE_ATTRIBUTE_DATA attributes{};
-		attributes.dwFileAttributes = INVALID_FILE_ATTRIBUTES;
-		if (GetFileAttributesEx(langs_xml_path.c_str(), GetFileExInfoStandard, &attributes) != 0)
-		{
-			if (attributes.nFileSizeLow == 0 && attributes.nFileSizeHigh == 0)
-			{
-				if (_pNativeLangSpeaker)
-				{
-					doRecover = _pNativeLangSpeaker->messageBox("LoadLangsFailed",
-						NULL,
-						L"Load langs.xml failed!\rDo you want to recover your langs.xml?",
-						L"Configurator",
-						MB_YESNO);
-				}
-				else
-				{
-					doRecover = ::MessageBox(NULL, L"Load langs.xml failed!\rDo you want to recover your langs.xml?", L"Configurator", MB_YESNO);
-				}
-			}
-		}
-	}
-	else
-		doRecover = true;
+	bool doRecover = false;
+        if (npp::platform::fileExists(langs_xml_path))
+        {
+                const auto size = npp::platform::fileSize(langs_xml_path);
+                if (size && *size == 0)
+                {
+                        if (_pNativeLangSpeaker)
+                        {
+                                doRecover = (_pNativeLangSpeaker->messageBox("LoadLangsFailed",
+                                        NULL,
+                                        L"Load langs.xml failed!\rDo you want to recover your langs.xml?",
+                                        L"Configurator",
+                                        MB_YESNO) == IDYES);
+                        }
+                        else
+                        {
+                                doRecover = (::MessageBox(NULL, L"Load langs.xml failed!\rDo you want to recover your langs.xml?", L"Configurator", MB_YESNO) == IDYES);
+                        }
+                }
+        }
+        else
+                doRecover = true;
 
-	if (doRecover)
-	{
-		std::wstring srcLangsPath(_nppPath);
-		pathAppend(srcLangsPath, L"langs.model.xml");
-		::CopyFile(srcLangsPath.c_str(), langs_xml_path.c_str(), FALSE);
-	}
+        if (doRecover)
+        {
+                std::wstring srcLangsPath(_nppPath);
+                pathAppend(srcLangsPath, L"langs.model.xml");
+                npp::platform::copyFile(srcLangsPath, langs_xml_path, false);
+        }
 
 	_pXmlDoc = new TiXmlDocument(langs_xml_path);
 
@@ -1339,7 +1335,7 @@ bool NppParameters::load()
 	pathAppend(srcConfigPath, L"config.model.xml");
 
 	if (!doesFileExist(configPath.c_str()))
-		::CopyFile(srcConfigPath.c_str(), configPath.c_str(), FALSE);
+                npp::platform::copyFile(srcConfigPath, configPath, false);
 
 	_pXmlUserDoc = new TiXmlDocument(configPath);
 	loadOkay = _pXmlUserDoc->LoadFile();
@@ -1362,12 +1358,12 @@ bool NppParameters::load()
 	pathAppend(_stylerPath, L"stylers.xml");
 
 	if (!doesFileExist(_stylerPath.c_str()))
-	{
-		std::wstring srcStylersPath(_nppPath);
-		pathAppend(srcStylersPath, L"stylers.model.xml");
+        {
+                std::wstring srcStylersPath(_nppPath);
+                pathAppend(srcStylersPath, L"stylers.model.xml");
 
-		::CopyFile(srcStylersPath.c_str(), _stylerPath.c_str(), TRUE);
-	}
+                npp::platform::copyFile(srcStylersPath, _stylerPath, true);
+        }
 
 	if (_nppGUI._themeName.empty() || (!doesFileExist(_nppGUI._themeName.c_str())))
 		_nppGUI._themeName.assign(_stylerPath);
@@ -1507,11 +1503,11 @@ bool NppParameters::load()
 	pathAppend(v852NoNeedShortcutsBackup, NONEEDSHORTCUTSXMLBACKUP_FILENAME);
 
 	if (!doesFileExist(_shortcutsPath.c_str()))
-	{
-		std::wstring srcShortcutsPath(_nppPath);
-		pathAppend(srcShortcutsPath, SHORTCUTSXML_FILENAME);
+        {
+                std::wstring srcShortcutsPath(_nppPath);
+                pathAppend(srcShortcutsPath, SHORTCUTSXML_FILENAME);
 
-		::CopyFile(srcShortcutsPath.c_str(), _shortcutsPath.c_str(), TRUE);
+                npp::platform::copyFile(srcShortcutsPath, _shortcutsPath, true);
 
 		// Create empty file v852NoNeedShortcutsBackup.xml for not giving warning, neither doing backup, in future use.
 		HANDLE hFile = ::CreateFile(v852NoNeedShortcutsBackup.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -1545,12 +1541,12 @@ bool NppParameters::load()
 	pathAppend(_contextMenuPath, L"contextMenu.xml");
 
 	if (!doesFileExist(_contextMenuPath.c_str()))
-	{
-		std::wstring srcContextMenuPath(_nppPath);
-		pathAppend(srcContextMenuPath, L"contextMenu.xml");
+        {
+                std::wstring srcContextMenuPath(_nppPath);
+                pathAppend(srcContextMenuPath, L"contextMenu.xml");
 
-		::CopyFile(srcContextMenuPath.c_str(), _contextMenuPath.c_str(), TRUE);
-	}
+                npp::platform::copyFile(srcContextMenuPath, _contextMenuPath, true);
+        }
 
 	_pXmlContextMenuDocA = new TiXmlDocumentA();
 	loadOkay = _pXmlContextMenuDocA->LoadUnicodeFilePath(_contextMenuPath.c_str());
@@ -3254,7 +3250,7 @@ LangType NppParameters::getLangFromExt(const wchar_t *ext)
 
 void NppParameters::setCloudChoice(const wchar_t *pathChoice)
 {
-        const std::wstring cloudDirectory = npp::platform::combinePath(getSettingsFolder(), L"cloud");
+	const std::wstring cloudDirectory = npp::platform::combinePath(getSettingsFolder(), L"cloud");
         npp::platform::ensureDirectoryExists(cloudDirectory);
 
         const std::wstring cloudChoicePath = npp::platform::combinePath(cloudDirectory, L"choice");
@@ -3602,16 +3598,16 @@ void NppParameters::writeSession(const Session & session, const wchar_t *fileNam
 	// Backup session file before overriting it
 	//
 	wchar_t backupPathName[MAX_PATH]{};
-	BOOL doesBackupCopyExist = FALSE;
-	if (doesFileExist(sessionPathName))
-	{
-		_tcscpy(backupPathName, sessionPathName);
-		_tcscat(backupPathName, SESSION_BACKUP_EXT);
+	bool doesBackupCopyExist = false;
+        if (doesFileExist(sessionPathName))
+        {
+                _tcscpy(backupPathName, sessionPathName);
+                _tcscat(backupPathName, SESSION_BACKUP_EXT);
 		
 		// Make sure backup file is not read-only, if it exists
 		removeReadOnlyFlagFromFileAttributes(backupPathName);
-		doesBackupCopyExist = CopyFile(sessionPathName, backupPathName, FALSE);
-		if (!doesBackupCopyExist && !isEndSessionCritical())
+		doesBackupCopyExist = npp::platform::copyFile(std::wstring(sessionPathName), std::wstring(backupPathName), false);
+                if (!doesBackupCopyExist && !isEndSessionCritical())
 		{
 			wstring errTitle = L"Session file backup error: ";
 			errTitle += GetLastErrorAsString(0);
@@ -3804,7 +3800,7 @@ void NppParameters::writeShortcuts()
 			// if the backup file already exists, it will not be overwritten.
 			wstring v852ShortcutsBackupPath = _shortcutsPath;
 			v852ShortcutsBackupPath += L".v8.5.2.backup";
-			::CopyFile(_shortcutsPath.c_str(), v852ShortcutsBackupPath.c_str(), TRUE);
+			npp::platform::copyFile(_shortcutsPath, v852ShortcutsBackupPath, true);
 
 			// Warn User about the current shortcut will be changed and it has been backup. If users' the shortcuts.xml has been corrupted
 			// due to recoded macro under v8.5.2 (or previous versions) being modified by v8.5.3 (or later versions),
@@ -8345,7 +8341,7 @@ int NppParameters::langTypeToCommandID(LangType lt) const
 		case L_ASN1 :
 			id = IDM_LANG_ASN1; break;
 
-        case L_AVS :
+	case L_AVS :
 			id = IDM_LANG_AVS; break;
 
 		case L_BLITZBASIC :

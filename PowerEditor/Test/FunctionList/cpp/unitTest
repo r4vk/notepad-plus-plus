@@ -19,6 +19,7 @@
 #include <shlwapi.h>
 #include <shlobj.h>
 #endif
+#include "Platform/FileSystem.h"
 #include "Parameters.h"
 #include "FileDialog.h"
 #include "ScintillaEditView.h"
@@ -702,11 +703,11 @@ bool LocalizationSwitcher::addLanguageFromXml(wstring xmlFullPath)
 
 bool LocalizationSwitcher::switchToLang(wchar_t *lang2switch) const
 {
-	wstring langPath = getXmlFilePathFromLangName(lang2switch);
-	if (langPath.empty())
-		return false;
+        wstring langPath = getXmlFilePathFromLangName(lang2switch);
+        if (langPath.empty())
+                return false;
 
-	return ::CopyFileW(langPath.c_str(), _nativeLangPath.c_str(), FALSE) != FALSE;
+        return npp::platform::copyFile(langPath, _nativeLangPath, false);
 }
 
 
@@ -1093,9 +1094,9 @@ bool NppParameters::load()
 
 	if (doRecover)
 	{
-		generic_string srcLangsPath(_nppPath);
-		PathAppend(srcLangsPath, TEXT("langs.model.xml"));
-		::CopyFile(srcLangsPath.c_str(), langs_xml_path.c_str(), FALSE);
+                generic_string srcLangsPath(_nppPath);
+                PathAppend(srcLangsPath, TEXT("langs.model.xml"));
+                npp::platform::copyFile(srcLangsPath, langs_xml_path, false);
 	}
 
 	_pXmlDoc = new TiXmlDocument(langs_xml_path);
@@ -1126,8 +1127,8 @@ bool NppParameters::load()
 	generic_string srcConfigPath(_nppPath);
 	PathAppend(srcConfigPath, TEXT("config.model.xml"));
 
-	if (!::PathFileExists(configPath.c_str()))
-		::CopyFile(srcConfigPath.c_str(), configPath.c_str(), FALSE);
+        if (!::PathFileExists(configPath.c_str()))
+                npp::platform::copyFile(std::wstring(srcConfigPath.c_str()), std::wstring(configPath.c_str()), false);
 
 	_pXmlUserDoc = new TiXmlDocument(configPath);
 	loadOkay = _pXmlUserDoc->LoadFile();
@@ -1149,13 +1150,13 @@ bool NppParameters::load()
 	_stylerPath = _userPath;
 	PathAppend(_stylerPath, TEXT("stylers.xml"));
 
-	if (!PathFileExists(_stylerPath.c_str()))
-	{
-		generic_string srcStylersPath(_nppPath);
-		PathAppend(srcStylersPath, TEXT("stylers.model.xml"));
+        if (!PathFileExists(_stylerPath.c_str()))
+        {
+                generic_string srcStylersPath(_nppPath);
+                PathAppend(srcStylersPath, TEXT("stylers.model.xml"));
 
-		::CopyFile(srcStylersPath.c_str(), _stylerPath.c_str(), TRUE);
-	}
+                npp::platform::copyFile(std::wstring(srcStylersPath.c_str()), std::wstring(_stylerPath.c_str()), true);
+        }
 
 	if (_nppGUI._themeName.empty() || (!PathFileExists(_nppGUI._themeName.c_str())))
 		_nppGUI._themeName.assign(_stylerPath);
@@ -1247,13 +1248,13 @@ bool NppParameters::load()
 	_shortcutsPath = _userPath;
 	PathAppend(_shortcutsPath, TEXT("shortcuts.xml"));
 
-	if (!PathFileExists(_shortcutsPath.c_str()))
-	{
-		generic_string srcShortcutsPath(_nppPath);
-		PathAppend(srcShortcutsPath, TEXT("shortcuts.xml"));
+        if (!PathFileExists(_shortcutsPath.c_str()))
+        {
+                generic_string srcShortcutsPath(_nppPath);
+                PathAppend(srcShortcutsPath, TEXT("shortcuts.xml"));
 
-		::CopyFile(srcShortcutsPath.c_str(), _shortcutsPath.c_str(), TRUE);
-	}
+                npp::platform::copyFile(std::wstring(srcShortcutsPath.c_str()), std::wstring(_shortcutsPath.c_str()), true);
+        }
 
 	_pXmlShortcutDoc = new TiXmlDocument(_shortcutsPath);
 	loadOkay = _pXmlShortcutDoc->LoadFile();
@@ -1280,13 +1281,13 @@ bool NppParameters::load()
 	_contextMenuPath = _userPath;
 	PathAppend(_contextMenuPath, TEXT("contextMenu.xml"));
 
-	if (!PathFileExists(_contextMenuPath.c_str()))
-	{
-		generic_string srcContextMenuPath(_nppPath);
-		PathAppend(srcContextMenuPath, TEXT("contextMenu.xml"));
+        if (!PathFileExists(_contextMenuPath.c_str()))
+        {
+                generic_string srcContextMenuPath(_nppPath);
+                PathAppend(srcContextMenuPath, TEXT("contextMenu.xml"));
 
-		::CopyFile(srcContextMenuPath.c_str(), _contextMenuPath.c_str(), TRUE);
-	}
+                npp::platform::copyFile(std::wstring(srcContextMenuPath.c_str()), std::wstring(_contextMenuPath.c_str()), true);
+        }
 
 	_pXmlContextMenuDocA = new TiXmlDocumentA();
 	loadOkay = _pXmlContextMenuDocA->LoadUnicodeFilePath(_contextMenuPath.c_str());
