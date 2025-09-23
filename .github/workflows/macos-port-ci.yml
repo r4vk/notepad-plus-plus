@@ -27,3 +27,36 @@ jobs:
 
       - name: Run platform unit tests
         run: ctest --test-dir build-tests --output-on-failure --build-config Release
+
+      - name: Configure macOS preview bundle
+        run: cmake -S PowerEditor/macos -B build-macos -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build macOS preview bundle
+        run: cmake --build build-macos --config Release --parallel
+
+      - name: Package macOS preview bundle
+        run: |
+          set -euo pipefail
+          APP_NAME="NotepadPlusPlusPreview.app"
+          BUILD_ROOT="build-macos"
+
+          if [ -d "${BUILD_ROOT}/${APP_NAME}" ]; then
+            APP_DIR="${BUILD_ROOT}"
+            BUNDLE_PATH="${BUILD_ROOT}/${APP_NAME}"
+          else
+            BUNDLE_PATH=$(find "${BUILD_ROOT}" -maxdepth 2 -type d -name "${APP_NAME}" -print -quit)
+            if [ -z "${BUNDLE_PATH}" ]; then
+              echo "Unable to locate ${APP_NAME} within ${BUILD_ROOT}" >&2
+              exit 1
+            fi
+            APP_DIR=$(dirname "${BUNDLE_PATH}")
+          fi
+
+          tar -czf NotepadPlusPlusPreview.app.tar.gz -C "${APP_DIR}" "${APP_NAME}"
+
+      - name: Upload macOS preview artifact
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: NotepadPlusPlusPreview-macOS
+          path: NotepadPlusPlusPreview.app.tar.gz
