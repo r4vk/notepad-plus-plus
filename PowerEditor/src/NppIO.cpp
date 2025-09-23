@@ -28,6 +28,7 @@
 #include "fileBrowser.h"
 #include <unordered_set>
 #include "Common.h"
+#include "Platform/PathProvider.h"
 
 using namespace std;
 
@@ -1773,10 +1774,7 @@ bool Notepad_plus::fileSave(BufferID bufferID)
 			fn_bak = fn_bak_expanded;
 
 			// Make sure the directory exists
-			if (!doesDirectoryExist(fn_bak.c_str()))
-			{
-				SHCreateDirectory(NULL, fn_bak.c_str());
-			}
+                        npp::platform::ensureDirectoryExists(fn_bak);
 
 			// Determine what to name the backed-up file
 			if (backup == bak_simple)

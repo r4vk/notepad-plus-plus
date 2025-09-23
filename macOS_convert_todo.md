@@ -4,7 +4,7 @@
 - "Przygotować przegląd architektury PowerEditor/src oraz zależności w katalogach scintilla i lexilla, aby sklasyfikować elementy przenośne i ściśle związane z Win32 (+)"
 - "Sporządzić listę funkcji systemowych Windows (shell, rejestr, COM, powiadomienia, udostępnianie plików, drukowanie), z których korzysta Notepad++ i wskazać ich odpowiedniki w macOS (+)"
 - "Przygotować dokument z analizą ryzyka i potencjalnych ograniczeń funkcjonalnych podczas portu do macOS (np. brak wsparcia dla niektórych pluginów) (+)"
-- "Zdecydować o strategii interfejsu użytkownika: natywne Cocoa vs. wieloplatformowy toolkit (Qt/wxWidgets) wraz z analizą kosztów migracji i wpływu na istniejące rozszerzenia (+)"
+- "Zdecydować o strategii interfejsu użytkownika: Qt 6.x + Liquid Glass jako warstwa prezentacji z mostkami do AppKit (+)"
 - "Opracować harmonogram iteracyjnego portu (etapy: przygotowanie core, interfejs, integracje systemowe, beta) oraz kryteria wejścia/wyjścia dla każdego etapu (+)"
 
 ## Przygotowanie środowiska budowy i zależności
@@ -26,6 +26,9 @@
 
 ## Interfejs użytkownika i doświadczenie użytkownika
 - "Przeprowadzić inwentaryzację elementów UI zależnych od Win32 (Docking Manager, ToolBar, TreeView, rebar, status bar) oraz określić ich odpowiedniki w Cocoa/toolkicie wieloplatformowym"
+- "Zaprojektować moduł `npp::ui` z interfejsami Qt dla okien, paneli dokowanych i menubarów (Liquid Glass)"
+- "Przygotować bibliotekę stylów i tokenów projektowych Liquid Glass w Qt Quick/Qt Widgets"
+- "Zbudować prototyp głównego okna Qt z integracją Scintilli i panelem dokowanym w konwencji Liquid Glass"
 - "Zaprojektować makietę interfejsu macOS uwzględniającą menubar zgodny z HIG, pasek narzędzi NSToolbar, panel preferencji oraz widoki wielodokumentowe"
 - "Dostosować komponent edytora (Scintilla) do renderowania w kontenerze macOS (SCIModule dla Cocoa) wraz z obsługą HiDPI i trybu ciemnego systemowego"
 - "Zaimplementować obsługę skrótów klawiaturowych według standardów macOS (Command/Option) z możliwością mapowania istniejących ustawień"

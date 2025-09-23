@@ -29,6 +29,8 @@
 #include "EncodingMapper.h"
 #include "uchardet.h"
 #include "FileInterface.h"
+#include "Platform/FileSystem.h"
+#include "Platform/PathProvider.h"
 
 
 static const int blockSize = 128 * 1024 + 4;
@@ -1202,20 +1204,14 @@ bool FileManager::backupCurrentBuffer()
 			UnicodeConvertor.setEncoding(mode);
 			int encoding = buffer->getEncoding();
 
-			wstring backupFilePath = buffer->getBackupFileName();
-			if (backupFilePath.empty())
-			{
-				// Create file
-				backupFilePath = NppParameters::getInstance().getUserPath();
-				backupFilePath += L"\\backup\\";
+                        wstring backupFilePath = buffer->getBackupFileName();
+                        if (backupFilePath.empty())
+                        {
+                                const auto backupDirectory = npp::platform::combinePath(
+                                        NppParameters::getInstance().getUserPath(), L"backup");
+                                npp::platform::ensureDirectoryExists(backupDirectory);
 
-				// if "backup" folder doesn't exist, create it.
-				if (!doesDirectoryExist(backupFilePath.c_str()))
-				{
-					::CreateDirectory(backupFilePath.c_str(), NULL);
-				}
-
-				backupFilePath += buffer->getFileName();
+                                backupFilePath = npp::platform::combinePath(backupDirectory, buffer->getFileName());
 
 				const int temBufLen = 32;
 				wchar_t tmpbuf[temBufLen];

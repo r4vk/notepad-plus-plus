@@ -40,6 +40,8 @@
 #include "fileBrowser.h"
 #include "Common.h"
 #include "NppDarkMode.h"
+#include "Platform/FileSystem.h"
+#include "Platform/PathProvider.h"
 
 using namespace std;
 
@@ -6404,8 +6406,8 @@ void Notepad_plus::getCurrentOpenedFiles(Session & session, bool includeUntitled
 //This function is destructive
 bool Notepad_plus::emergency(const wstring& emergencySavedDir)
 {
-    ::CreateDirectory(emergencySavedDir.c_str(), NULL);
-	return dumpFiles(emergencySavedDir.c_str(), L"File");
+    npp::platform::ensureDirectoryExists(emergencySavedDir);
+        return dumpFiles(emergencySavedDir.c_str(), L"File");
 }
 
 bool Notepad_plus::dumpFiles(const wchar_t * outdir, const wchar_t * fileprefix)
@@ -6988,15 +6990,10 @@ vector<wstring> Notepad_plus::addNppComponents(const wchar_t *destDir, const wch
     if (!fns.empty())
     {
         // Get plugins dir
-		wstring destDirName = (NppParameters::getInstance()).getNppPath();
-        pathAppend(destDirName, destDir);
+        const std::wstring destDirName = npp::platform::combinePath(
+            (NppParameters::getInstance()).getNppPath(), destDir);
 
-        if (!doesDirectoryExist(destDirName.c_str()))
-        {
-            ::CreateDirectory(destDirName.c_str(), NULL);
-        }
-
-        destDirName += L"\\";
+        npp::platform::ensureDirectoryExists(destDirName);
 
         size_t sz = fns.size();
         for (size_t i = 0 ; i < sz ; ++i)
@@ -7004,10 +7001,10 @@ vector<wstring> Notepad_plus::addNppComponents(const wchar_t *destDir, const wch
             if (doesFileExist(fns.at(i).c_str()))
             {
                 // copy to plugins directory
-                wstring destName = destDirName;
-                destName += ::PathFindFileName(fns.at(i).c_str());
+                const auto fileName = ::PathFindFileName(fns.at(i).c_str());
+                const std::wstring destName = npp::platform::combinePath(destDirName, fileName ? fileName : L"");
                 if (::CopyFile(fns.at(i).c_str(), destName.c_str(), FALSE))
-                    copiedFiles.push_back(destName.c_str());
+                    copiedFiles.push_back(destName);
             }
         }
     }
@@ -7025,12 +7022,9 @@ vector<wstring> Notepad_plus::addNppPlugins(const wchar_t *extFilterName, const 
 	if (!fns.empty())
     {
         // Get plugins dir
-		wstring destDirName = (NppParameters::getInstance()).getPluginRootDir();
+        const std::wstring destDirName = (NppParameters::getInstance()).getPluginRootDir();
 
-        if (!doesDirectoryExist(destDirName.c_str()))
-        {
-            ::CreateDirectory(destDirName.c_str(), NULL);
-        }
+        npp::platform::ensureDirectoryExists(destDirName);
 
         size_t sz = fns.size();
         for (size_t i = 0 ; i < sz ; ++i)
@@ -7038,23 +7032,18 @@ vector<wstring> Notepad_plus::addNppPlugins(const wchar_t *extFilterName, const 
             if (doesFileExist(fns.at(i).c_str()))
             {
                 // copy to plugins directory
-                wstring destName = destDirName;
-				
-				wstring nameExt = ::PathFindFileName(fns.at(i).c_str());
-				auto pos = nameExt.find_last_of(L".");
-				if (pos == wstring::npos)
-					continue;
+                                wstring nameExt = ::PathFindFileName(fns.at(i).c_str());
+                                auto pos = nameExt.find_last_of(L".");
+                                if (pos == wstring::npos)
+                                        continue;
 
-				wstring name = nameExt.substr(0, pos);
-				pathAppend(destName, name);
-				if (!doesDirectoryExist(destName.c_str()))
-				{
-					::CreateDirectory(destName.c_str(), NULL);
-				}
-				pathAppend(destName, nameExt);
+                                wstring name = nameExt.substr(0, pos);
+                                const std::wstring pluginDirectory = npp::platform::combinePath(destDirName, name);
+                                npp::platform::ensureDirectoryExists(pluginDirectory);
+                                const std::wstring fullDestination = npp::platform::combinePath(pluginDirectory, nameExt);
 
-                if (::CopyFile(fns.at(i).c_str(), destName.c_str(), FALSE))
-                    copiedFiles.push_back(destName.c_str());
+                if (::CopyFile(fns.at(i).c_str(), fullDestination.c_str(), FALSE))
+                    copiedFiles.push_back(fullDestination);
             }
         }
     }
