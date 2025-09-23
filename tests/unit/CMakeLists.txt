@@ -11,6 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(npp_platform STATIC
     ${POWEREDITOR_SRC}/Platform/FileSystem.cpp
     ${POWEREDITOR_SRC}/Platform/PathProvider.cpp
+    ${POWEREDITOR_SRC}/Platform/SettingsLocator.cpp
 )
 
 target_include_directories(npp_platform
@@ -29,6 +30,7 @@ enable_testing()
 
 add_executable(npp_platform_tests
     platform/test_path_provider.cpp
+    platform/test_settings_locator.cpp
 )
 
 target_link_libraries(npp_platform_tests

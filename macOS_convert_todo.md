@@ -19,7 +19,7 @@
 - "Wydzielić moduły logiki niezależnej od UI (edytor, zarządzanie plikami, ustawienia) z PowerEditor/src do bibliotek możliwych do wielokrotnego użycia"
 - "Zaprojektować API warstwy abstrakcji dla usług systemowych (okna, zdarzenia, schowek, monitoring plików, drukowanie) i wprowadzić implementację referencyjną dla Windows jako krok pośredni"
 - "Zastąpić bezpośrednie wywołania Win32 (HWND, SendMessage, WNDPROC, SHFileOperation itp.) odpowiednim interfejsem pośredniczącym"
-- "Utworzyć moduł zarządzania preferencjami i profilem użytkownika oparty na ścieżkach macOS (~/Library/Application Support/Notepad++)"
+- "Utworzyć moduł zarządzania preferencjami i profilem użytkownika oparty na ścieżkach macOS (~/Library/Application Support/Notepad++) (+)"
 - "Wprowadzić moduł platformowy dla ścieżek użytkownika (npp::platform::PathProvider) i podpiąć go w NppParameters (+)"
 - "Zastąpić w NppParameters użycie PathFileExists/WinAPI tworzeniem katalogów przez platform::ensureDirectoryExists (+)"
 - "Zaplanować migrację funkcji rejestru Windows na pliki konfiguracyjne/CFPreferences w macOS"

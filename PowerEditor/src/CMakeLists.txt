@@ -95,6 +95,7 @@ SET(src_files
                         ./MISC/Common/SortLocale.cpp
                         ./Platform/FileSystem.cpp
                         ./Platform/PathProvider.cpp
+                        ./Platform/SettingsLocator.cpp
 			./WinControls/ContextMenu/ContextMenu.cpp
 			./WinControls/OpenSaveFileDialog/CustomFileDialog.cpp
 			./WinControls/PluginsAdmin/pluginsAdmin.cpp

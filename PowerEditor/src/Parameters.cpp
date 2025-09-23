@@ -21,6 +21,7 @@
 #endif
 #include "Parameters.h"
 #include "Platform/FileSystem.h"
+#include "Platform/SettingsLocator.h"
 #include "ScintillaEditView.h"
 #include "keys.h"
 #include "localization.h"
@@ -1174,38 +1175,25 @@ bool NppParameters::load()
 		}
 	}
 
-	_pluginRootDir = _nppPath;
-	pathAppend(_pluginRootDir, L"plugins");
+        const auto settingsDirectories = npp::platform::prepareSettingsDirectories(_nppPath, _isLocal);
 
-	//
-	// the 3rd priority: general default configuration
-	//
-        std::wstring nppPluginRootParent;
+        _userPath = settingsDirectories.userSettingsRoot.empty() ? _nppPath : settingsDirectories.userSettingsRoot;
+        _pluginRootDir = settingsDirectories.pluginInstallRoot.empty() ? npp::platform::combinePath(_nppPath, L"plugins") : settingsDirectories.pluginInstallRoot;
+        _pluginConfDir = settingsDirectories.pluginInstallConfig.empty() ? npp::platform::combinePath(_pluginRootDir, L"Config") : settingsDirectories.pluginInstallConfig;
+
+        const std::wstring userPluginsRoot = settingsDirectories.userPluginsRoot.empty() ? _pluginRootDir : settingsDirectories.userPluginsRoot;
+        _userPluginConfDir = settingsDirectories.userPluginsConfig.empty() ? npp::platform::combinePath(userPluginsRoot, L"Config") : settingsDirectories.userPluginsConfig;
+
         if (_isLocal)
         {
-                _userPath = nppPluginRootParent = _nppPath;
-                _userPluginConfDir = _pluginRootDir;
-                pathAppend(_userPluginConfDir, L"Config");
                 _appdataNppDir = _userPath;
         }
         else
         {
-                _userPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ApplicationSupport);
                 if (_userPath.empty())
-                        _userPath = getSpecialFolderLocation(npp::platform::KnownDirectory::RoamingData);
-
-                pathAppend(_userPath, L"Notepad++");
-                npp::platform::ensureDirectoryExists(_userPath);
+                        _userPath = _nppPath;
 
                 _appdataNppDir = _userPath;
-
-                std::wstring userPluginRoot = _userPath;
-                pathAppend(userPluginRoot, L"plugins");
-                npp::platform::ensureDirectoryExists(userPluginRoot);
-
-                _userPluginConfDir = userPluginRoot;
-                pathAppend(_userPluginConfDir, L"Config");
-                npp::platform::ensureDirectoryExists(_userPluginConfDir);
 
                 // For PluginAdmin to launch the wingup with UAC
                 setElevationRequired(true);
@@ -1214,13 +1202,16 @@ bool NppParameters::load()
         if (_appdataNppDir.empty())
                 _appdataNppDir = _userPath;
 
-        _pluginConfDir = _pluginRootDir; // for plugin list home
-        pathAppend(_pluginConfDir, L"Config");
-
-        if (!nppPluginRootParent.empty())
-                npp::platform::ensureDirectoryExists(nppPluginRootParent);
-        npp::platform::ensureDirectoryExists(_pluginRootDir);
-        npp::platform::ensureDirectoryExists(_pluginConfDir);
+        if (!_userPath.empty())
+                npp::platform::ensureDirectoryExists(_userPath);
+        if (!userPluginsRoot.empty())
+                npp::platform::ensureDirectoryExists(userPluginsRoot);
+        if (!_pluginRootDir.empty())
+                npp::platform::ensureDirectoryExists(_pluginRootDir);
+        if (!_pluginConfDir.empty())
+                npp::platform::ensureDirectoryExists(_pluginConfDir);
+        if (!_userPluginConfDir.empty())
+                npp::platform::ensureDirectoryExists(_userPluginConfDir);
 
 	_sessionPath = _userPath; // Session stores the absolute file path, it should never be on cloud
 
