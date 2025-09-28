@@ -21,6 +21,8 @@
 #include "verifySignedfile.h"
 #include "NppDarkMode.h"
 #include "dpiManagerV2.h"
+#include "Platform/FileSystem.h"
+#include "Platform/PathProvider.h"
 #include <memory>
 
 typedef std::vector<std::wstring> ParamVector;
@@ -338,12 +340,28 @@ void doException(Notepad_plus_Window & notepad_plus_plus)
 	Win32Exception::removeHandler();	//disable exception handler after exception, we don't want corrupt data structures to crash the exception handler
 	::MessageBox(Notepad_plus_Window::gNppHWND, L"Notepad++ will attempt to save any unsaved data. However, data loss is very likely.", L"Recovery initiating", MB_OK | MB_ICONINFORMATION);
 
-	wchar_t tmpDir[1024];
-	GetTempPath(1024, tmpDir);
-	std::wstring emergencySavedDir = tmpDir;
-	emergencySavedDir += L"\\Notepad++ RECOV";
+        using npp::platform::KnownDirectory;
 
-	bool res = notepad_plus_plus.emergency(emergencySavedDir);
+        std::wstring emergencySavedDir = npp::platform::pathFor(KnownDirectory::Temporary);
+        if (emergencySavedDir.empty())
+        {
+                emergencySavedDir = npp::platform::pathFor(KnownDirectory::LocalData);
+        }
+
+        if (emergencySavedDir.empty())
+        {
+                emergencySavedDir = npp::platform::pathFor(KnownDirectory::UserHome);
+        }
+
+        emergencySavedDir = npp::platform::combinePath(emergencySavedDir, L"Notepad++ RECOV");
+
+        if (!npp::platform::ensureDirectoryExists(emergencySavedDir))
+        {
+                emergencySavedDir = L"Notepad++ RECOV";
+                npp::platform::ensureDirectoryExists(emergencySavedDir);
+        }
+
+        bool res = notepad_plus_plus.emergency(emergencySavedDir);
 	if (res)
 	{
 		std::wstring displayText = L"Notepad++ was able to successfully recover some unsaved documents, or nothing to be saved could be found.\r\nYou can find the results at :\r\n";

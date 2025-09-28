@@ -15,8 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <time.h>
+#ifdef _WIN32
 #include <shlwapi.h>
 #include <shlobj.h>
+#endif
+#include "Platform/FileSystem.h"
 #include "Parameters.h"
 #include "FileDialog.h"
 #include "ScintillaEditView.h"
@@ -700,11 +703,11 @@ bool LocalizationSwitcher::addLanguageFromXml(wstring xmlFullPath)
 
 bool LocalizationSwitcher::switchToLang(wchar_t *lang2switch) const
 {
-	wstring langPath = getXmlFilePathFromLangName(lang2switch);
-	if (langPath.empty())
-		return false;
+        wstring langPath = getXmlFilePathFromLangName(lang2switch);
+        if (langPath.empty())
+                return false;
 
-	return ::CopyFileW(langPath.c_str(), _nativeLangPath.c_str(), FALSE) != FALSE;
+        return npp::platform::copyFile(langPath, _nativeLangPath, false);
 }
 
 
@@ -945,17 +948,9 @@ bool NppParameters::reloadLang()
 	return loadOkay;
 }
 
-generic_string NppParameters::getSpecialFolderLocation(int folderKind)
+generic_string NppParameters::getSpecialFolderLocation(npp::platform::KnownDirectory folderKind)
 {
-	TCHAR path[MAX_PATH];
-	const HRESULT specialLocationResult = SHGetFolderPath(nullptr, folderKind, nullptr, SHGFP_TYPE_CURRENT, path);
-
-	generic_string result;
-	if (SUCCEEDED(specialLocationResult))
-	{
-		result = path;
-	}
-	return result;
+        return npp::platform::pathFor(folderKind);
 }
 
 
@@ -964,10 +959,13 @@ generic_string NppParameters::getSettingsFolder()
 	if (_isLocal)
 		return _nppPath;
 
-	generic_string settingsFolderPath = getSpecialFolderLocation(CSIDL_APPDATA);
+        generic_string settingsFolderPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ApplicationSupport);
 
-	if (settingsFolderPath.empty())
-		return _nppPath;
+        if (settingsFolderPath.empty())
+                settingsFolderPath = getSpecialFolderLocation(npp::platform::KnownDirectory::RoamingData);
+
+        if (settingsFolderPath.empty())
+                return _nppPath;
 
 	PathAppend(settingsFolderPath, TEXT("Notepad++"));
 	return settingsFolderPath;
@@ -997,7 +995,7 @@ bool NppParameters::load()
 		// We check if OS is Vista or greater version
 		if (_winVersion >= WV_VISTA)
 		{
-			generic_string progPath = getSpecialFolderLocation(CSIDL_PROGRAM_FILES);
+                        generic_string progPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ProgramFiles);
 			TCHAR nppDirLocation[MAX_PATH];
 			lstrcpy(nppDirLocation, _nppPath.c_str());
 			::PathRemoveFileSpec(nppDirLocation);
@@ -1011,23 +1009,27 @@ bool NppParameters::load()
 	{
 		_userPath = _nppPath;
 	}
-	else
-	{
-		_userPath = getSpecialFolderLocation(CSIDL_APPDATA);
+        else
+        {
+                _userPath = getSpecialFolderLocation(npp::platform::KnownDirectory::ApplicationSupport);
+                if (_userPath.empty())
+                        _userPath = getSpecialFolderLocation(npp::platform::KnownDirectory::RoamingData);
 
-		PathAppend(_userPath, TEXT("Notepad++"));
-		_appdataNppDir = _userPath;
+                PathAppend(_userPath, TEXT("Notepad++"));
+                _appdataNppDir = _userPath;
 
-		// Plugin System V1
-		if (!PathFileExists(_userPath.c_str()))
-			::CreateDirectory(_userPath.c_str(), NULL);
+                // Plugin System V1
+                if (!PathFileExists(_userPath.c_str()))
+                        ::CreateDirectory(_userPath.c_str(), NULL);
 
-		// Plugin System V2
-		_localAppdataNppDir = getSpecialFolderLocation(CSIDL_LOCAL_APPDATA);
-		PathAppend(_localAppdataNppDir, TEXT("Notepad++"));
-		if (!PathFileExists(_localAppdataNppDir.c_str()))
-			::CreateDirectory(_localAppdataNppDir.c_str(), NULL);
-	}
+                // Plugin System V2
+                _localAppdataNppDir = getSpecialFolderLocation(npp::platform::KnownDirectory::LocalData);
+                if (_localAppdataNppDir.empty())
+                        _localAppdataNppDir = _userPath;
+                PathAppend(_localAppdataNppDir, TEXT("Notepad++"));
+                if (!PathFileExists(_localAppdataNppDir.c_str()))
+                        ::CreateDirectory(_localAppdataNppDir.c_str(), NULL);
+        }
 	
 
 
@@ -1092,9 +1094,9 @@ bool NppParameters::load()
 
 	if (doRecover)
 	{
-		generic_string srcLangsPath(_nppPath);
-		PathAppend(srcLangsPath, TEXT("langs.model.xml"));
-		::CopyFile(srcLangsPath.c_str(), langs_xml_path.c_str(), FALSE);
+                generic_string srcLangsPath(_nppPath);
+                PathAppend(srcLangsPath, TEXT("langs.model.xml"));
+                npp::platform::copyFile(srcLangsPath, langs_xml_path, false);
 	}
 
 	_pXmlDoc = new TiXmlDocument(langs_xml_path);
@@ -1125,8 +1127,8 @@ bool NppParameters::load()
 	generic_string srcConfigPath(_nppPath);
 	PathAppend(srcConfigPath, TEXT("config.model.xml"));
 
-	if (!::PathFileExists(configPath.c_str()))
-		::CopyFile(srcConfigPath.c_str(), configPath.c_str(), FALSE);
+        if (!::PathFileExists(configPath.c_str()))
+                npp::platform::copyFile(std::wstring(srcConfigPath.c_str()), std::wstring(configPath.c_str()), false);
 
 	_pXmlUserDoc = new TiXmlDocument(configPath);
 	loadOkay = _pXmlUserDoc->LoadFile();
@@ -1148,13 +1150,13 @@ bool NppParameters::load()
 	_stylerPath = _userPath;
 	PathAppend(_stylerPath, TEXT("stylers.xml"));
 
-	if (!PathFileExists(_stylerPath.c_str()))
-	{
-		generic_string srcStylersPath(_nppPath);
-		PathAppend(srcStylersPath, TEXT("stylers.model.xml"));
+        if (!PathFileExists(_stylerPath.c_str()))
+        {
+                generic_string srcStylersPath(_nppPath);
+                PathAppend(srcStylersPath, TEXT("stylers.model.xml"));
 
-		::CopyFile(srcStylersPath.c_str(), _stylerPath.c_str(), TRUE);
-	}
+                npp::platform::copyFile(std::wstring(srcStylersPath.c_str()), std::wstring(_stylerPath.c_str()), true);
+        }
 
 	if (_nppGUI._themeName.empty() || (!PathFileExists(_nppGUI._themeName.c_str())))
 		_nppGUI._themeName.assign(_stylerPath);
@@ -1246,13 +1248,13 @@ bool NppParameters::load()
 	_shortcutsPath = _userPath;
 	PathAppend(_shortcutsPath, TEXT("shortcuts.xml"));
 
-	if (!PathFileExists(_shortcutsPath.c_str()))
-	{
-		generic_string srcShortcutsPath(_nppPath);
-		PathAppend(srcShortcutsPath, TEXT("shortcuts.xml"));
+        if (!PathFileExists(_shortcutsPath.c_str()))
+        {
+                generic_string srcShortcutsPath(_nppPath);
+                PathAppend(srcShortcutsPath, TEXT("shortcuts.xml"));
 
-		::CopyFile(srcShortcutsPath.c_str(), _shortcutsPath.c_str(), TRUE);
-	}
+                npp::platform::copyFile(std::wstring(srcShortcutsPath.c_str()), std::wstring(_shortcutsPath.c_str()), true);
+        }
 
 	_pXmlShortcutDoc = new TiXmlDocument(_shortcutsPath);
 	loadOkay = _pXmlShortcutDoc->LoadFile();
@@ -1279,13 +1281,13 @@ bool NppParameters::load()
 	_contextMenuPath = _userPath;
 	PathAppend(_contextMenuPath, TEXT("contextMenu.xml"));
 
-	if (!PathFileExists(_contextMenuPath.c_str()))
-	{
-		generic_string srcContextMenuPath(_nppPath);
-		PathAppend(srcContextMenuPath, TEXT("contextMenu.xml"));
+        if (!PathFileExists(_contextMenuPath.c_str()))
+        {
+                generic_string srcContextMenuPath(_nppPath);
+                PathAppend(srcContextMenuPath, TEXT("contextMenu.xml"));
 
-		::CopyFile(srcContextMenuPath.c_str(), _contextMenuPath.c_str(), TRUE);
-	}
+                npp::platform::copyFile(std::wstring(srcContextMenuPath.c_str()), std::wstring(_contextMenuPath.c_str()), true);
+        }
 
 	_pXmlContextMenuDocA = new TiXmlDocumentA();
 	loadOkay = _pXmlContextMenuDocA->LoadUnicodeFilePath(_contextMenuPath.c_str());

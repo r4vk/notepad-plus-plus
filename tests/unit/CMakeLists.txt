@@ -1,0 +1,54 @@
+cmake_minimum_required(VERSION 3.16)
+project(NotepadPP_UnitTests LANGUAGES CXX)
+
+get_filename_component(NPP_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+set(POWEREDITOR_SRC ${NPP_ROOT}/PowerEditor/src)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+add_library(npp_platform STATIC
+    ${POWEREDITOR_SRC}/Platform/FileSystem.cpp
+    ${POWEREDITOR_SRC}/Platform/PathProvider.cpp
+    ${POWEREDITOR_SRC}/Platform/SettingsLocator.cpp
+    ${POWEREDITOR_SRC}/Platform/SystemInfo.cpp
+)
+
+target_include_directories(npp_platform
+    PUBLIC
+        ${POWEREDITOR_SRC}
+)
+
+if(WIN32)
+    target_link_libraries(npp_platform
+        PUBLIC
+            shell32
+            advapi32
+            gdi32
+            user32
+    )
+endif()
+
+enable_testing()
+
+add_executable(npp_platform_tests
+    platform/test_path_provider.cpp
+    platform/test_settings_locator.cpp
+    platform/test_file_system.cpp
+    platform/test_system_info.cpp
+)
+
+target_link_libraries(npp_platform_tests
+    PRIVATE
+        npp_platform
+)
+
+target_include_directories(npp_platform_tests
+    PRIVATE
+        ${POWEREDITOR_SRC}
+        ${NPP_ROOT}/scintilla/test/unit
+        ${NPP_ROOT}/lexilla/test/unit
+)
+
+add_test(NAME npp_platform_tests COMMAND npp_platform_tests)

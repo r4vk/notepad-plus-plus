@@ -17,6 +17,7 @@
 
 #include <shlwapi.h>
 #include "Notepad_plus_Window.h"
+#include "Platform/PathProvider.h"
 
 HWND Notepad_plus_Window::gNppHWND = NULL;
 
@@ -256,10 +257,7 @@ void Notepad_plus_Window::init(HINSTANCE hInst, HWND parent, const wchar_t *cmdL
 			{
 				wstring appDataThemePath = appDataThemeDir;
 
-				if (!doesDirectoryExist(appDataThemePath.c_str()))
-				{
-					::CreateDirectory(appDataThemePath.c_str(), NULL);
-				}
+                                npp::platform::ensureDirectoryExists(appDataThemePath);
 
 				wchar_t* fn = PathFindFileName(fileNames[i].c_str());
 				pathAppend(appDataThemePath, fn);

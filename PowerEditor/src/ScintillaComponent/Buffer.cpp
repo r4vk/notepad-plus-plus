@@ -16,6 +16,8 @@
 
 #include <deque>
 #include <algorithm>
+#include <chrono>
+#include <cstdint>
 #include <time.h>
 #include <locale>
 #include <sys/stat.h>
@@ -29,6 +31,8 @@
 #include "EncodingMapper.h"
 #include "uchardet.h"
 #include "FileInterface.h"
+#include "Platform/FileSystem.h"
+#include "Platform/PathProvider.h"
 
 
 static const int blockSize = 128 * 1024 + 4;
@@ -65,15 +69,12 @@ namespace // anonymous
 		return defvalue; // fallback unknown
 	}
 
-	// local helper to get the current system time in milliseconds since Unix epoch (January 1, 1970)
-	ULONGLONG GetUnixSysTimeInMilliseconds()
-	{
-		FILETIME ft;
-		::GetSystemTimeAsFileTime(&ft); // 100-nanosecond intervals since January 1, 1601 (UTC)
-		ULONGLONG ullTime = (((ULONGLONG)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
-		const ULONGLONG EPOCH_DIFF = 116444736000000000ULL; // difference between Jan 1, 1601 and Jan 1, 1970 in 100-ns intervals
-		return (ullTime - EPOCH_DIFF) / 10000; // subtract the diff and convert to milliseconds
-	}
+        // local helper to get the current system time in milliseconds since Unix epoch (January 1, 1970)
+        uint64_t GetUnixSysTimeInMilliseconds()
+        {
+                using namespace std::chrono;
+                return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+        }
 } // anonymous namespace
 
 using namespace std;
@@ -1202,20 +1203,14 @@ bool FileManager::backupCurrentBuffer()
 			UnicodeConvertor.setEncoding(mode);
 			int encoding = buffer->getEncoding();
 
-			wstring backupFilePath = buffer->getBackupFileName();
-			if (backupFilePath.empty())
-			{
-				// Create file
-				backupFilePath = NppParameters::getInstance().getUserPath();
-				backupFilePath += L"\\backup\\";
+                        wstring backupFilePath = buffer->getBackupFileName();
+                        if (backupFilePath.empty())
+                        {
+                                const auto backupDirectory = npp::platform::combinePath(
+                                        NppParameters::getInstance().getUserPath(), L"backup");
+                                npp::platform::ensureDirectoryExists(backupDirectory);
 
-				// if "backup" folder doesn't exist, create it.
-				if (!doesDirectoryExist(backupFilePath.c_str()))
-				{
-					::CreateDirectory(backupFilePath.c_str(), NULL);
-				}
-
-				backupFilePath += buffer->getFileName();
+                                backupFilePath = npp::platform::combinePath(backupDirectory, buffer->getFileName());
 
 				const int temBufLen = 32;
 				wchar_t tmpbuf[temBufLen];
@@ -1419,15 +1414,18 @@ SavingStatus FileManager::saveBuffer(BufferID id, const wchar_t* filename, bool 
 
 		// ERROR_ACCESS_DENIED, swap to temporary file copy for the UAC elevation way
 
-		wchar_t wszBuf[MAX_PATH + 1]{};
-		if (::GetTempPath(MAX_PATH, wszBuf) == 0)
-			return SavingStatus::SaveOpenFailed; // cannot continue
+                const std::wstring tempDirectory = npp::platform::pathFor(npp::platform::KnownDirectory::Temporary);
+                if (tempDirectory.empty())
+                        return SavingStatus::SaveOpenFailed; // cannot continue
 
-		strTempFile = wszBuf;
-		strTempFile += L"npp-" + std::to_wstring(GetUnixSysTimeInMilliseconds()) + L".tmp"; // make unique temporary filename
-		if (!UnicodeConvertor.openFile(strTempFile.c_str()))
-			return SavingStatus::SaveOpenFailed; // cannot continue, weird
-	}
+                if (!npp::platform::ensureDirectoryExists(tempDirectory))
+                        return SavingStatus::SaveOpenFailed; // cannot continue
+
+                const std::wstring tempFileName = std::wstring(L"npp-") + std::to_wstring(GetUnixSysTimeInMilliseconds()) + L".tmp";
+                strTempFile = npp::platform::combinePath(tempDirectory, tempFileName);
+                if (!UnicodeConvertor.openFile(strTempFile.c_str()))
+                        return SavingStatus::SaveOpenFailed; // cannot continue, weird
+        }
 
 	_pscratchTilla->execute(SCI_SETDOCPOINTER, 0, buffer->_doc);	//generate new document
 
