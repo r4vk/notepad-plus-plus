@@ -1629,8 +1629,8 @@ public:
 
 	TiXmlNode* getChildElementByAttribute(TiXmlNode *pere, const wchar_t *childName, const wchar_t *attributeName, const wchar_t *attributeVal) const;
 
-	bool writeScintillaParams();
-	void createXmlTreeFromGUIParams();
+        bool writeScintillaParams();
+        void createXmlTreeFromGUIParams();
 
 	std::wstring writeStyles(LexerStylerArray & lexersStylers, StyleArray & globalStylers); // return "" if saving file succeeds, otherwise return the new saved file path
 	bool insertTabInfo(const wchar_t* langName, int tabInfo, bool backspaceUnindent);
@@ -1923,8 +1923,14 @@ public:
 	LanguageNameInfo getLangNameInfoFromNameID(const std::wstring& langNameID);
 
 private:
-	NppParameters();
-	~NppParameters();
+        NppParameters();
+        ~NppParameters();
+
+        void loadPreferencesOverrides();
+        void backfillPreferencesStore() const;
+        void persistPreferencesToStore() const;
+        static constexpr const wchar_t* guiPreferencesDomain() { return L"notepad.gui"; }
+        static constexpr const wchar_t* backupPreferencesDomain() { return L"notepad.gui.backup"; }
 
 	// No copy ctor and assignment
 	NppParameters(const NppParameters&) = delete;

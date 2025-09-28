@@ -131,9 +131,12 @@
     <ClCompile Include="..\src\MISC\Common\Common.cpp" />
     <ClCompile Include="..\src\MISC\Common\FileInterface.cpp" />
     <ClCompile Include="..\src\Platform\FileSystem.cpp" />
+    <ClCompile Include="..\src\Platform\FileChangePoller.cpp" />
     <ClCompile Include="..\src\Platform\PathProvider.cpp" />
     <ClCompile Include="..\src\Platform\SettingsLocator.cpp" />
     <ClCompile Include="..\src\Platform\SystemInfo.cpp" />
+    <ClCompile Include="..\src\Platform\SystemServices.cpp" />
+    <ClCompile Include="..\src\Platform\SystemServices_Windows.cpp" />
     <ClCompile Include="..\src\WinControls\ContextMenu\ContextMenu.cpp" />
     <ClCompile Include="..\src\WinControls\OpenSaveFileDialog\CustomFileDialog.cpp" />
     <ClCompile Include="..\src\WinControls\PluginsAdmin\pluginsAdmin.cpp" />
@@ -213,6 +216,7 @@
     <ClCompile Include="..\src\WinControls\ReadDirectoryChanges\ReadDirectoryChanges.cpp" />
     <ClCompile Include="..\src\WinControls\ReadDirectoryChanges\ReadDirectoryChangesPrivate.cpp" />
     <ClCompile Include="..\src\WinControls\ReadDirectoryChanges\ReadFileChanges.cpp" />
+    <ClCompile Include="..\src\Platform\PreferencesSync.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\src\MISC\md5\md5Dlgs.rc" />
@@ -254,8 +258,11 @@
     <ClInclude Include="..\src\MISC\Common\Sorters.h" />
     <ClInclude Include="..\src\MISC\Common\SortLocale.h" />
     <ClInclude Include="..\src\Platform\FileSystem.h" />
+    <ClInclude Include="..\src\Platform\FileChangePoller.h" />
+    <ClInclude Include="..\src\Platform\PreferencesSync.h" />
     <ClInclude Include="..\src\Platform\PathProvider.h" />
     <ClInclude Include="..\src\Platform\SettingsLocator.h" />
+    <ClInclude Include="..\src\Platform\SystemServices.h" />
     <ClInclude Include="..\src\MISC\Common\verifySignedfile.h" />
     <ClInclude Include="..\src\MISC\md5\md5.h" />
     <ClInclude Include="..\src\MISC\md5\md5Dlgs.h" />

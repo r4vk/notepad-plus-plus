@@ -17,7 +17,7 @@
 
 ## Refaktoryzacja warstwy bazowej i abstrakcje systemowe
 - "Wydzielić moduły logiki niezależnej od UI (edytor, zarządzanie plikami, ustawienia) z PowerEditor/src do bibliotek możliwych do wielokrotnego użycia"
-- "Zaprojektować API warstwy abstrakcji dla usług systemowych (okna, zdarzenia, schowek, monitoring plików, drukowanie) i wprowadzić implementację referencyjną dla Windows jako krok pośredni"
+- "Zaprojektować API warstwy abstrakcji dla usług systemowych (okna, zdarzenia, schowek, monitoring plików, drukowanie) i wprowadzić implementację referencyjną dla Windows jako krok pośredni (+)"
 - "Zastąpić bezpośrednie wywołania Win32 (HWND, SendMessage, WNDPROC, SHFileOperation itp.) odpowiednim interfejsem pośredniczącym"
 - "Utworzyć moduł zarządzania preferencjami i profilem użytkownika oparty na ścieżkach macOS (~/Library/Application Support/Notepad++) (+)"
 - "Wprowadzić moduł platformowy dla ścieżek użytkownika (npp::platform::PathProvider) i podpiąć go w NppParameters (+)"
@@ -25,8 +25,9 @@
 - "Abstrahować kopiowanie plików w konfiguracji Notepad++ przez npp::platform::copyFile (+)"
 - "Wydzielić moduł informacji o systemie (npp::platform::SystemInfo) i podpiąć go pod Debug Info (+)"
 - "Zaplanować migrację funkcji rejestru Windows na pliki konfiguracyjne/CFPreferences w macOS (+)"
-- "Utworzyć moduł `npp::platform::PreferencesStore` z backendami Windows/macOS i zrefaktoryzować istniejące odwołania do rejestru"
-- "Przygotować migrator ustawień importujący `config.xml` oraz eksport `.reg` do nowych preferencji"
+- "Utworzyć moduł `npp::platform::PreferencesStore` z backendami Windows/macOS" (+)
+- "Zrefaktoryzować istniejące odwołania do rejestru, aby korzystały z `PreferencesStore` (+)"
+- "Przygotować migrator ustawień importujący `config.xml` oraz eksport `.reg` do nowych preferencji (+)"
 - "Udokumentować API preferencji dla twórców wtyczek i przygotować przykładowe wdrożenia"
 - "Przygotować alternatywę dla wbudowanego managera aktualizacji opartego o WinInet (np. wykorzystanie URLSession/CFNetwork)"
 

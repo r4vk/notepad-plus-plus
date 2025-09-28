@@ -20,6 +20,7 @@
 #include <uxtheme.h>
 #include <cassert>
 #include <locale>
+#include "Platform/SystemServices.h"
 #include "StaticDialog.h"
 #include "CustomFileDialog.h"
 #include "FileInterface.h"
@@ -906,76 +907,17 @@ double stodLocale(const wstring& str, [[maybe_unused]] _locale_t loc, size_t* id
 }
 
 
-bool str2Clipboard(const wstring &str2cpy, HWND hwnd)
+bool str2Clipboard(const wstring &str2cpy, [[maybe_unused]] HWND hwnd)
 {
-	size_t len2Allocate = (str2cpy.size() + 1) * sizeof(wchar_t);
-	HGLOBAL hglbCopy = ::GlobalAlloc(GMEM_MOVEABLE, len2Allocate);
-	if (hglbCopy == NULL)
-	{
-		return false;
-	}
-
-	if (!::OpenClipboard(hwnd))
-	{
-		::GlobalFree(hglbCopy);
-		return false;
-	}
-
-	if (!::EmptyClipboard())
-	{
-		::GlobalFree(hglbCopy);
-		::CloseClipboard();
-		return false;
-	}
-
-	// Lock the handle and copy the text to the buffer.
-	wchar_t *pStr = (wchar_t *)::GlobalLock(hglbCopy);
-	if (!pStr)
-	{
-		::GlobalFree(hglbCopy);
-		::CloseClipboard();
-		return false;
-	}
-
-	wcscpy_s(pStr, len2Allocate / sizeof(wchar_t), str2cpy.c_str());
-	::GlobalUnlock(hglbCopy);
-	// Place the handle on the clipboard.
-	unsigned int clipBoardFormat = CF_UNICODETEXT;
-	if (!::SetClipboardData(clipBoardFormat, hglbCopy))
-	{
-		::GlobalFree(hglbCopy);
-		::CloseClipboard();
-		return false;
-	}
-
-	if (!::CloseClipboard())
-	{
-		return false;
-	}
-	return true;
+        auto & clipboard = npp::platform::SystemServices::instance().clipboard();
+        return clipboard.setText(str2cpy);
 }
 
 std::wstring strFromClipboard()
 {
-	std::wstring clipboardText;
-	if (::OpenClipboard(NULL))
-	{
-		if (::IsClipboardFormatAvailable(CF_UNICODETEXT))
-		{
-			HANDLE hClipboardData = ::GetClipboardData(CF_UNICODETEXT);
-			if (hClipboardData)
-			{
-				wchar_t* pWc = static_cast<wchar_t*>(::GlobalLock(hClipboardData));
-				if (pWc)
-				{
-					clipboardText = pWc;
-					::GlobalUnlock(hClipboardData);
-				}
-			}
-		}
-		::CloseClipboard();
-	}
-	return clipboardText;
+        auto & clipboard = npp::platform::SystemServices::instance().clipboard();
+        auto text = clipboard.getText();
+        return text.value_or(std::wstring());
 }
 
 bool buf2Clipboard(const std::vector<Buffer*>& buffers, bool isFullPath, HWND hwnd)

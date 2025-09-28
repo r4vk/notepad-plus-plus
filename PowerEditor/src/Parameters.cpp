@@ -16,12 +16,17 @@
 
 #include <time.h>
 
+#include <algorithm>
+#include <limits>
+
 #ifdef _WIN32
 #include <shlobj.h>
 #endif
 #include "Parameters.h"
 #include "Platform/FileSystem.h"
+#include "Platform/PreferencesSync.h"
 #include "Platform/SettingsLocator.h"
+#include "Platform/SystemServices.h"
 #include "ScintillaEditView.h"
 #include "keys.h"
 #include "localization.h"
@@ -38,6 +43,26 @@ using namespace std;
 
 namespace // anonymous namespace
 {
+
+        npp::platform::GuiPreferencesSnapshot makeGuiPreferencesSnapshot(const NppGUI& gui)
+        {
+                npp::platform::GuiPreferencesSnapshot snapshot{};
+                snapshot.rememberLastSession = gui._rememberLastSession;
+                snapshot.keepSessionAbsentFileEntries = gui._keepSessionAbsentFileEntries;
+                snapshot.detectEncoding = gui._detectEncoding;
+                snapshot.saveAllConfirm = gui._saveAllConfirm;
+                snapshot.checkHistoryFiles = gui._checkHistoryFiles;
+                snapshot.muteSounds = gui._muteSounds;
+                snapshot.trayIconBehavior = gui._isMinimizedToTray;
+                snapshot.multiInstanceBehavior = static_cast<int>(gui._multiInstSetting);
+                snapshot.fileAutoDetectionMask = gui._fileAutoDetection;
+                snapshot.backupStrategy = static_cast<int>(gui._backup);
+                snapshot.useCustomDirectory = gui._useDir;
+                snapshot.isSnapshotMode = gui._isSnapshotMode;
+                snapshot.snapshotIntervalMs = gui._snapshotBackupTiming;
+                snapshot.backupDirectory = gui._backupDir;
+                return snapshot;
+        }
 
 
 struct WinMenuKeyDefinition // more or less matches accelerator table definition, easy copy/paste
@@ -1340,15 +1365,18 @@ bool NppParameters::load()
 	_pXmlUserDoc = new TiXmlDocument(configPath);
 	loadOkay = _pXmlUserDoc->LoadFile();
 	
-	if (!loadOkay)
-	{
-		TiXmlDeclaration* decl = new TiXmlDeclaration(L"1.0", L"UTF-8", L"");
-		_pXmlUserDoc->LinkEndChild(decl);
-	}
-	else
-	{
-		getUserParametersFromXmlTree();
-	}
+        if (!loadOkay)
+        {
+                TiXmlDeclaration* decl = new TiXmlDeclaration(L"1.0", L"UTF-8", L"");
+                _pXmlUserDoc->LinkEndChild(decl);
+        }
+        else
+        {
+                getUserParametersFromXmlTree();
+        }
+
+        backfillPreferencesStore();
+        loadPreferencesOverrides();
 
 	//----------------------------//
 	// stylers.xml : for per-user //
@@ -1930,15 +1958,15 @@ bool NppParameters::getUserStylersFromXmlTree()
 
 bool NppParameters::getUserParametersFromXmlTree()
 {
-	if (!_pXmlUserDoc)
-		return false;
+        if (!_pXmlUserDoc)
+                return false;
 
-	TiXmlNode *root = _pXmlUserDoc->FirstChild(L"NotepadPlus");
-	if (!root)
-		return false;
+        TiXmlNode *root = _pXmlUserDoc->FirstChild(L"NotepadPlus");
+        if (!root)
+                return false;
 
-	// Get GUI parameters
-	feedGUIParameters(root);
+        // Get GUI parameters
+        feedGUIParameters(root);
 
 	// Get History parameters
 	feedFileListParameters(root);
@@ -1960,17 +1988,113 @@ bool NppParameters::getUserParametersFromXmlTree()
 	//Get File browser parameters
 	feedFileBrowserParameters(root);
 
-	//Get Column editor parameters
-	feedColumnEditorParameters(root);
+        //Get Column editor parameters
+        feedColumnEditorParameters(root);
 
-	return true;
+        return true;
+}
+
+
+void NppParameters::loadPreferencesOverrides()
+{
+        auto& preferences = npp::platform::SystemServices::instance().preferences();
+        const std::wstring guiDomain(guiPreferencesDomain());
+        const std::wstring backupDomain(backupPreferencesDomain());
+
+        if (const auto rememberLast = preferences.getBoolean(guiDomain, L"rememberLastSession"))
+                _nppGUI._rememberLastSession = *rememberLast;
+
+        if (const auto keepSession = preferences.getBoolean(guiDomain, L"keepSessionAbsentFileEntries"))
+                _nppGUI._keepSessionAbsentFileEntries = *keepSession;
+
+        if (const auto detectEncoding = preferences.getBoolean(guiDomain, L"detectEncoding"))
+                _nppGUI._detectEncoding = *detectEncoding;
+
+        if (const auto saveAllConfirm = preferences.getBoolean(guiDomain, L"saveAllConfirm"))
+                _nppGUI._saveAllConfirm = *saveAllConfirm;
+
+        if (const auto checkHistory = preferences.getBoolean(guiDomain, L"checkHistoryFiles"))
+                _nppGUI._checkHistoryFiles = *checkHistory;
+
+        if (const auto muteSounds = preferences.getBoolean(guiDomain, L"muteSounds"))
+                _nppGUI._muteSounds = *muteSounds;
+
+        if (const auto trayBehavior = preferences.getInt64(guiDomain, L"trayIconBehavior"))
+        {
+                const int candidate = static_cast<int>(*trayBehavior);
+                if (candidate >= sta_none && candidate <= sta_minimize_close)
+                        _nppGUI._isMinimizedToTray = candidate;
+        }
+
+        if (const auto multiInstance = preferences.getInt64(guiDomain, L"multiInstanceBehavior"))
+        {
+                const int candidate = static_cast<int>(*multiInstance);
+                if (candidate >= monoInst && candidate <= multiInst)
+                        _nppGUI._multiInstSetting = static_cast<MultiInstSetting>(candidate);
+        }
+
+        if (const auto fileAutoDetection = preferences.getInt64(guiDomain, L"fileAutoDetectionMask"))
+        {
+                const int allowedMask = cdEnabledOld | cdEnabledNew | cdAutoUpdate | cdGo2end;
+                const int mask = static_cast<int>(*fileAutoDetection);
+                if (mask >= 0 && (mask & ~allowedMask) == 0)
+                        _nppGUI._fileAutoDetection = mask;
+        }
+
+        if (const auto rememberSnapshot = preferences.getBoolean(backupDomain, L"isSnapshotMode"))
+                _nppGUI._isSnapshotMode = *rememberSnapshot;
+
+        if (const auto snapshotInterval = preferences.getInt64(backupDomain, L"snapshotIntervalMs"))
+        {
+                if (*snapshotInterval >= 0)
+                {
+                        const auto clamped = std::min<std::int64_t>(*snapshotInterval,
+                                static_cast<std::int64_t>(std::numeric_limits<std::size_t>::max()));
+                        _nppGUI._snapshotBackupTiming = static_cast<std::size_t>(clamped);
+                }
+        }
+
+        if (const auto backupStrategy = preferences.getInt64(backupDomain, L"strategy"))
+        {
+                const int candidate = static_cast<int>(*backupStrategy);
+                if (candidate >= bak_none && candidate <= bak_verbose)
+                        _nppGUI._backup = static_cast<BackupFeature>(candidate);
+        }
+
+        if (const auto useCustomDirectory = preferences.getBoolean(backupDomain, L"useCustomDirectory"))
+                _nppGUI._useDir = *useCustomDirectory;
+
+        if (const auto backupDirectory = preferences.getString(backupDomain, L"directory"))
+                _nppGUI._backupDir = *backupDirectory;
+        else if (!_nppGUI._useDir)
+                _nppGUI._backupDir.clear();
+}
+
+
+void NppParameters::backfillPreferencesStore() const
+{
+        auto& preferences = npp::platform::SystemServices::instance().preferences();
+        const std::wstring guiDomain(guiPreferencesDomain());
+        const std::wstring backupDomain(backupPreferencesDomain());
+        const auto snapshot = makeGuiPreferencesSnapshot(_nppGUI);
+        npp::platform::backfillGuiPreferences(preferences, guiDomain, backupDomain, snapshot);
+}
+
+
+void NppParameters::persistPreferencesToStore() const
+{
+        auto& preferences = npp::platform::SystemServices::instance().preferences();
+        const std::wstring guiDomain(guiPreferencesDomain());
+        const std::wstring backupDomain(backupPreferencesDomain());
+        const auto snapshot = makeGuiPreferencesSnapshot(_nppGUI);
+        npp::platform::persistGuiPreferences(preferences, guiDomain, backupDomain, snapshot);
 }
 
 
 std::pair<unsigned char, unsigned char> NppParameters::addUserDefineLangsFromXmlTree(TiXmlDocument *tixmldoc)
 {
-	if (!tixmldoc)
-		return std::make_pair(static_cast<unsigned char>(0), static_cast<unsigned char>(0));
+        if (!tixmldoc)
+                return std::make_pair(static_cast<unsigned char>(0), static_cast<unsigned char>(0));
 
 	TiXmlNode *root = tixmldoc->FirstChild(L"NotepadPlus");
 	if (!root)
@@ -7270,11 +7394,13 @@ void NppParameters::createXmlTreeFromGUIParams()
 		nppRoot->RemoveChild(oldGUIRoot);
 	}
 
-	TiXmlNode *newGUIRoot = nppRoot->InsertEndChild(TiXmlElement(L"GUIConfigs"));
+        TiXmlNode *newGUIRoot = nppRoot->InsertEndChild(TiXmlElement(L"GUIConfigs"));
 
-	// <GUIConfig name="ToolBar" visible="yes">standard</GUIConfig>
-	{
-		TiXmlElement *GUIConfigElement = (newGUIRoot->InsertEndChild(TiXmlElement(L"GUIConfig")))->ToElement();
+        persistPreferencesToStore();
+
+        // <GUIConfig name="ToolBar" visible="yes">standard</GUIConfig>
+        {
+                TiXmlElement *GUIConfigElement = (newGUIRoot->InsertEndChild(TiXmlElement(L"GUIConfig")))->ToElement();
 		auto& nppGUITbInfo = _nppGUI._tbIconInfo;
 		GUIConfigElement->SetAttribute(L"name", L"ToolBar");
 		const wchar_t* pStr = (_nppGUI._toolbarShow) ? L"yes" : L"no";
