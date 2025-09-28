@@ -15,10 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+#include <algorithm>
 #include <format>
+
 #include "AboutDlg.h"
 #include "Parameters.h"
 #include "localization.h"
+#include "Platform/SystemInfo.h"
 #if defined __has_include
 #if __has_include ("NppLibsVersion.h")
 #include "NppLibsVersion.h"
@@ -30,76 +33,6 @@ using namespace std;
 #ifdef _MSC_VER
 #pragma warning(disable : 4996) // for GetVersion()
 #endif
-
-
-// local DebugInfo helper
-void AppendDisplayAdaptersInfo(wstring& strOut, const unsigned int maxAdaptersIn)
-{
-	strOut += L"\r\n    installed Display Class adapters: ";
-
-	const wchar_t wszRegDisplayClassWinNT[] = L"SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E968-E325-11CE-BFC1-08002BE10318}";
-	HKEY hkDisplayClass = nullptr;
-	LSTATUS lStatus = ::RegOpenKeyExW(HKEY_LOCAL_MACHINE, wszRegDisplayClassWinNT, 0,
-		KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &hkDisplayClass);
-	if ((lStatus != ERROR_SUCCESS) || !hkDisplayClass)
-	{
-		strOut += L"\r\n    - error, failed to open the Registry Display Class key!";
-		return;
-	}
-
-	DWORD dwSubkeysCount = 0;
-	lStatus = ::RegQueryInfoKeyW(hkDisplayClass, nullptr, nullptr, nullptr, &dwSubkeysCount,
-		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
-	if ((lStatus == ERROR_SUCCESS) && (dwSubkeysCount > 0))
-	{
-		DWORD dwAdapterSubkeysFound = 0;
-		for (DWORD i = 0; i < dwSubkeysCount; ++i)
-		{
-			if (dwAdapterSubkeysFound >= maxAdaptersIn)
-			{
-				strOut += L"\r\n    - warning, search has been limited to maximum number of adapter records: "
-					+ std::to_wstring(maxAdaptersIn);
-				break;
-			}
-
-			wstring strAdapterNo = std::format(L"{:#04d}", i); // 0000, 0001, 0002, etc...
-			wstring strAdapterSubKey = wszRegDisplayClassWinNT;
-			strAdapterSubKey += L'\\' + strAdapterNo;
-			HKEY hkAdapterSubKey = nullptr;
-			lStatus = ::RegOpenKeyExW(HKEY_LOCAL_MACHINE, strAdapterSubKey.c_str(), 0, KEY_READ, &hkAdapterSubKey);
-			if ((lStatus == ERROR_SUCCESS) && hkAdapterSubKey)
-			{
-				strAdapterNo.insert(0, L"\r\n        "); // doubling the output indentation
-				const unsigned int nKeyValMaxLen = 127;
-				const DWORD dwKeyValMaxSize = nKeyValMaxLen * sizeof(wchar_t);
-				wchar_t wszKeyVal[nKeyValMaxLen + 1]{}; // +1 ... to ensure NUL termination
-				DWORD dwType = REG_SZ;
-				DWORD dwSize = dwKeyValMaxSize;
-				if (::RegQueryValueExW(hkAdapterSubKey, L"DriverDesc", nullptr, &dwType, (LPBYTE)wszKeyVal, &dwSize)
-					== ERROR_SUCCESS)
-				{
-					dwAdapterSubkeysFound++;
-					strOut += strAdapterNo + L": Description - ";
-					strOut += wszKeyVal;
-				}
-				// for exact HW identification, query about the "MatchingDeviceId"
-				dwSize = dwKeyValMaxSize;
-				if (::RegQueryValueExW(hkAdapterSubKey, L"DriverVersion", nullptr, &dwType, (LPBYTE)wszKeyVal, &dwSize)
-					== ERROR_SUCCESS)
-				{
-					strOut += strAdapterNo + L": DriverVersion - ";
-					strOut += wszKeyVal;
-				}
-				// to obtain also the above driver date, query about the "DriverDate"
-				::RegCloseKey(hkAdapterSubKey);
-				hkAdapterSubKey = nullptr;
-			}
-		}
-	}
-
-	::RegCloseKey(hkDisplayClass);
-	hkDisplayClass = nullptr;
-}
 
 
 intptr_t CALLBACK AboutDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
@@ -405,113 +338,85 @@ intptr_t CALLBACK DebugInfoDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM 
 			_debugInfoStr += nppGui._darkmode._isEnabled ? L"ON" : L"OFF";
 			_debugInfoStr += L"\r\n";
 
-			// Display Info
-			_debugInfoStr += L"Display Info:";
-			{
-				HDC hdc = ::GetDC(nullptr); // desktop DC
-				if (hdc)
-				{
-					_debugInfoStr += L"\r\n    primary monitor: " + std::to_wstring(::GetDeviceCaps(hdc, HORZRES));
-					_debugInfoStr += L"x" + std::to_wstring(::GetDeviceCaps(hdc, VERTRES));
-					_debugInfoStr += L", scaling " + std::to_wstring(::GetDeviceCaps(hdc, LOGPIXELSX) * 100 / 96);
-					_debugInfoStr += L"%";
-					::ReleaseDC(nullptr, hdc);
-				}
-				_debugInfoStr += L"\r\n    visible monitors count: " + std::to_wstring(::GetSystemMetrics(SM_CMONITORS));
-				AppendDisplayAdaptersInfo(_debugInfoStr, 4); // survey up to 4 potential graphics card Registry records
-			}
-			_debugInfoStr += L"\r\n";
+                        // Display and OS information
+                        const npp::platform::SystemProfile systemProfile = npp::platform::querySystemProfile();
 
-			// OS information
-			HKEY hKey = nullptr;
-			DWORD dataSize = 0;
+                        _debugInfoStr += L"Display Info:";
+                        if (systemProfile.display.primaryWidth > 0 && systemProfile.display.primaryHeight > 0)
+                        {
+                                _debugInfoStr += L"\r\n    primary monitor: " + std::to_wstring(systemProfile.display.primaryWidth);
+                                _debugInfoStr += L"x" + std::to_wstring(systemProfile.display.primaryHeight);
 
-			constexpr size_t bufSize = 96;
-			wchar_t szProductName[bufSize] = {'\0'};
-			constexpr size_t bufSizeBuildNumber = 32;
-			wchar_t szCurrentBuildNumber[bufSizeBuildNumber] = {'\0'};
-			wchar_t szReleaseId[32] = {'\0'};
-			DWORD dwUBR = 0;
-			constexpr size_t bufSizeUBR = 12;
-			wchar_t szUBR[bufSizeUBR] = L"0";
+                                if (systemProfile.display.primaryScalePercent > 0)
+                                {
+                                        _debugInfoStr += L", scaling " + std::to_wstring(systemProfile.display.primaryScalePercent);
+                                        _debugInfoStr += L"%";
+                                }
+                        }
+                        else
+                        {
+                                _debugInfoStr += L"\r\n    primary monitor: unavailable";
+                        }
 
-			// NOTE: RegQueryValueExW is not guaranteed to return null-terminated strings
-			if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_READ, &hKey) == ERROR_SUCCESS)
-			{
-				dataSize = sizeof(szProductName);
-				RegQueryValueExW(hKey, L"ProductName", NULL, NULL, reinterpret_cast<LPBYTE>(szProductName), &dataSize);
-				szProductName[sizeof(szProductName) / sizeof(wchar_t) - 1] = '\0';
+                        _debugInfoStr += L"\r\n    visible monitors count: " + std::to_wstring(std::max(systemProfile.display.monitorCount, 0));
 
-				dataSize = sizeof(szReleaseId);
-				if(RegQueryValueExW(hKey, L"DisplayVersion", NULL, NULL, reinterpret_cast<LPBYTE>(szReleaseId), &dataSize) != ERROR_SUCCESS)
-				{
-					dataSize = sizeof(szReleaseId);
-					RegQueryValueExW(hKey, L"ReleaseId", NULL, NULL, reinterpret_cast<LPBYTE>(szReleaseId), &dataSize);
-				}
-				szReleaseId[sizeof(szReleaseId) / sizeof(wchar_t) - 1] = '\0';
+                        if (!systemProfile.display.adapters.empty())
+                        {
+                                _debugInfoStr += L"\r\n    installed Display Class adapters:";
+                                for (size_t index = 0; index < systemProfile.display.adapters.size(); ++index)
+                                {
+                                        const auto& adapter = systemProfile.display.adapters[index];
+                                        const std::wstring adapterNumber = std::format(L"{:04}", index);
+                                        if (!adapter.description.empty())
+                                        {
+                                                _debugInfoStr += L"\r\n        " + adapterNumber + L": Description - " + adapter.description;
+                                        }
+                                        if (!adapter.driverVersion.empty())
+                                        {
+                                                _debugInfoStr += L"\r\n        " + adapterNumber + L": DriverVersion - " + adapter.driverVersion;
+                                        }
+                                }
+                        }
 
-				dataSize = sizeof(szCurrentBuildNumber);
-				RegQueryValueExW(hKey, L"CurrentBuildNumber", NULL, NULL, reinterpret_cast<LPBYTE>(szCurrentBuildNumber), &dataSize);
-				szCurrentBuildNumber[sizeof(szCurrentBuildNumber) / sizeof(wchar_t) - 1] = '\0';
+                        if (systemProfile.display.adaptersTruncated)
+                        {
+                                _debugInfoStr += L"\r\n    - warning, search has been limited to maximum number of adapter records: 4";
+                        }
 
-				dataSize = sizeof(DWORD);
-				if (RegQueryValueExW(hKey, L"UBR", NULL, NULL, reinterpret_cast<LPBYTE>(&dwUBR), &dataSize) == ERROR_SUCCESS)
-				{
-					swprintf(szUBR, bufSizeUBR, L"%u", dwUBR);
-				}
+                        _debugInfoStr += L"\r\n";
 
-				RegCloseKey(hKey);
-			}
+                        std::wstring osName = systemProfile.operatingSystem.name;
+                        if (osName.empty())
+                        {
+                                osName = (NppParameters::getInstance()).getWinVersionStr();
+                        }
 
-			// Get alternative OS information
-			if (szProductName[0] == '\0')
-			{
-				swprintf(szProductName, bufSize, L"%s", (NppParameters::getInstance()).getWinVersionStr().c_str());
-			}
-			else if (NppDarkMode::isWindows11())
-			{
-				wstring tmpProductName = szProductName;
-				constexpr size_t strLen = 10U;
-				const wchar_t strWin10[strLen + 1U] = L"Windows 10";
-				const size_t pos = tmpProductName.find(strWin10);
-				if (pos < (bufSize - strLen - 1U))
-				{
-					tmpProductName.replace(pos, strLen, L"Windows 11");
-					swprintf(szProductName, bufSize, L"%s", tmpProductName.c_str());
-				}
-			}
+                        if (!osName.empty())
+                        {
+                                _debugInfoStr += L"OS Name: ";
+                                _debugInfoStr += osName;
+                                if (!systemProfile.operatingSystem.architecture.empty())
+                                {
+                                        _debugInfoStr += L" (";
+                                        _debugInfoStr += systemProfile.operatingSystem.architecture;
+                                        _debugInfoStr += L")";
+                                }
+                                _debugInfoStr += L"\r\n";
+                        }
 
-			if (szCurrentBuildNumber[0] == '\0')
-			{
-				DWORD dwVersion = GetVersion();
-				if (dwVersion < 0x80000000)
-				{
-					swprintf(szCurrentBuildNumber, bufSizeBuildNumber, L"%u", HIWORD(dwVersion));
-				}
-			}
+                        if (!systemProfile.operatingSystem.version.empty())
+                        {
+                                _debugInfoStr += L"OS Version: ";
+                                _debugInfoStr += systemProfile.operatingSystem.version;
+                                _debugInfoStr += L"\r\n";
+                        }
 
-			_debugInfoStr += L"OS Name: ";
-			_debugInfoStr += szProductName;
-			_debugInfoStr += L" (";
-			_debugInfoStr += (NppParameters::getInstance()).getWinVerBitStr();
-			_debugInfoStr += L")";
-			_debugInfoStr += L"\r\n";
-
-			if (szReleaseId[0] != '\0')
-			{
-				_debugInfoStr += L"OS Version: ";
-				_debugInfoStr += szReleaseId;
-				_debugInfoStr += L"\r\n";
-			}
-
-			if (szCurrentBuildNumber[0] != '\0')
-			{
-				_debugInfoStr += L"OS Build: ";
-				_debugInfoStr += szCurrentBuildNumber;
-				_debugInfoStr += L".";
-				_debugInfoStr += szUBR;
-				_debugInfoStr += L"\r\n";
-			}
+                        if (!systemProfile.operatingSystem.build.empty())
+                        {
+                                _debugInfoStr += L"OS Build: ";
+                                _debugInfoStr += systemProfile.operatingSystem.build;
+                                _debugInfoStr += L"\r\n";
+                        }
 
 			{
 				constexpr size_t bufSizeACP = 32;

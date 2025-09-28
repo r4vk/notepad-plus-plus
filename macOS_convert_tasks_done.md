@@ -23,3 +23,4 @@
 - Rozszerzono moduł `Platform/FileSystem` o funkcje `fileSize` i `copyFile`, zrefaktoryzowano logikę `NppParameters` do korzystania z nich zamiast `CopyFile` oraz dodano testy jednostkowe weryfikujące kopiowanie i raportowanie rozmiarów plików niezależnie od platformy.
 - Utworzono katalog `PowerEditor/macos` z konfiguracją CMake i natywnym szkieletem Cocoa generującym pakiet `NotepadPlusPlusPreview.app`, aby potwierdzić przepływ budowy przyszłego UI Liquid Glass na macOS.
 - Przebudowano workflowi CI: ograniczono publikację artefaktów Windows do wydań tagowanych oraz dodano w `macOS Port CI` kroki budowy i archiwizacji podglądowego pakietu `.app`, co zamyka zadanie rozbudowy pipeline macOS o dystrybucję.
+- Utworzono moduł `Platform/SystemInfo` dostarczający informacje o systemie i wyświetlaczach niezależnie od platformy oraz zrefaktoryzowano `DebugInfoDlg`, aby korzystał z tej warstwy zamiast bezpośrednich wywołań WinAPI, przygotowując fallback dla macOS.

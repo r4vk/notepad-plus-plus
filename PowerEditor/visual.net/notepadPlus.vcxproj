@@ -133,6 +133,7 @@
     <ClCompile Include="..\src\Platform\FileSystem.cpp" />
     <ClCompile Include="..\src\Platform\PathProvider.cpp" />
     <ClCompile Include="..\src\Platform\SettingsLocator.cpp" />
+    <ClCompile Include="..\src\Platform\SystemInfo.cpp" />
     <ClCompile Include="..\src\WinControls\ContextMenu\ContextMenu.cpp" />
     <ClCompile Include="..\src\WinControls\OpenSaveFileDialog\CustomFileDialog.cpp" />
     <ClCompile Include="..\src\WinControls\PluginsAdmin\pluginsAdmin.cpp" />

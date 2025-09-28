@@ -23,6 +23,7 @@
 - "Wprowadzić moduł platformowy dla ścieżek użytkownika (npp::platform::PathProvider) i podpiąć go w NppParameters (+)"
 - "Zastąpić w NppParameters użycie PathFileExists/WinAPI tworzeniem katalogów przez platform::ensureDirectoryExists (+)"
 - "Abstrahować kopiowanie plików w konfiguracji Notepad++ przez npp::platform::copyFile (+)"
+- "Wydzielić moduł informacji o systemie (npp::platform::SystemInfo) i podpiąć go pod Debug Info (+)"
 - "Zaplanować migrację funkcji rejestru Windows na pliki konfiguracyjne/CFPreferences w macOS"
 - "Przygotować alternatywę dla wbudowanego managera aktualizacji opartego o WinInet (np. wykorzystanie URLSession/CFNetwork)"
 

@@ -96,6 +96,7 @@ SET(src_files
                         ./Platform/FileSystem.cpp
                         ./Platform/PathProvider.cpp
                         ./Platform/SettingsLocator.cpp
+                        ./Platform/SystemInfo.cpp
 			./WinControls/ContextMenu/ContextMenu.cpp
 			./WinControls/OpenSaveFileDialog/CustomFileDialog.cpp
 			./WinControls/PluginsAdmin/pluginsAdmin.cpp
