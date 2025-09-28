@@ -24,3 +24,5 @@
 - Utworzono katalog `PowerEditor/macos` z konfiguracją CMake i natywnym szkieletem Cocoa generującym pakiet `NotepadPlusPlusPreview.app`, aby potwierdzić przepływ budowy przyszłego UI Liquid Glass na macOS.
 - Przebudowano workflowi CI: ograniczono publikację artefaktów Windows do wydań tagowanych oraz dodano w `macOS Port CI` kroki budowy i archiwizacji podglądowego pakietu `.app`, co zamyka zadanie rozbudowy pipeline macOS o dystrybucję.
 - Utworzono moduł `Platform/SystemInfo` dostarczający informacje o systemie i wyświetlaczach niezależnie od platformy oraz zrefaktoryzowano `DebugInfoDlg`, aby korzystał z tej warstwy zamiast bezpośrednich wywołań WinAPI, przygotowując fallback dla macOS.
+
+- Opracowano plan migracji preferencji w dokumencie `docs/macos/registry_migration_plan.md`, mapując klucze rejestru Windows na preferencje macOS, definiując interfejs `PreferencesStore`, migratory oraz wymagania testowe; odpowiednie zadanie w planie oznaczono jako ukończone i dodano kolejne etapy implementacji.
