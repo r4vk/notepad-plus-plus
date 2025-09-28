@@ -18,13 +18,16 @@
 #include <time.h>
 #include <shlwapi.h>
 #include <shlobj.h>
+#include <chrono>
+#include <filesystem>
+#include <thread>
 #include "Notepad_plus_Window.h"
 #include "CustomFileDialog.h"
 #include "EncodingMapper.h"
 #include "VerticalFileSwitcher.h"
 #include "functionListPanel.h"
-#include "ReadDirectoryChanges.h"
-#include "ReadFileChanges.h"
+#include "Platform/FileChangePoller.h"
+#include "Platform/SystemServices.h"
 #include "fileBrowser.h"
 #include <unordered_set>
 #include "Common.h"
@@ -39,97 +42,99 @@ const std::wstring filenameReservedChars = L"<>:\"/\\|\?*\t";
 
 DWORD WINAPI Notepad_plus::monitorFileOnChange(void * params)
 {
-	MonitorInfo *monitorInfo = static_cast<MonitorInfo *>(params);
-	Buffer *buf = monitorInfo->_buffer;
-	HWND h = monitorInfo->_nppHandle;
+        MonitorInfo *monitorInfo = static_cast<MonitorInfo *>(params);
+        Buffer *buf = monitorInfo->_buffer;
+        HWND h = monitorInfo->_nppHandle;
 
-	const wchar_t *fullFileName = (const wchar_t *)buf->getFullPathName();
+        const std::filesystem::path fullPath = static_cast<const wchar_t *>(buf->getFullPathName());
+        const std::filesystem::path directory = fullPath.parent_path();
 
-	//The folder to watch :
-	wchar_t folderToMonitor[MAX_PATH]{};
-	wcscpy_s(folderToMonitor, fullFileName);
+        npp::platform::FileWatchEvent watchMask = npp::platform::FileWatchEvent::LastWrite;
+        watchMask |= npp::platform::FileWatchEvent::FileName;
+        watchMask |= npp::platform::FileWatchEvent::Size;
 
-	::PathRemoveFileSpecW(folderToMonitor);
-	
-	const DWORD dwNotificationFlags = FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_SIZE;
+        auto &services = npp::platform::SystemServices::instance();
+        auto fileWatcher = services.createFileWatcher();
+        std::filesystem::path directoryToWatch = directory;
+        if (directoryToWatch.empty())
+        {
+                directoryToWatch = fullPath.parent_path();
+        }
 
-	// Create the monitor and add directory to watch.
-	CReadDirectoryChanges dirChanges;
-	dirChanges.AddDirectory(folderToMonitor, true, dwNotificationFlags);
+        bool watching = false;
+        if (!directoryToWatch.empty() && fileWatcher)
+        {
+                watching = fileWatcher->watch(directoryToWatch, watchMask, { true, 16384u });
+        }
 
-	CReadFileChanges fileChanges;
-	fileChanges.AddFile(fullFileName, FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SIZE);
+        npp::platform::FileChangePoller changePoller(fullPath, watchMask);
 
-	HANDLE changeHandles[] = { buf->getMonitoringEvent(), dirChanges.GetWaitHandle() };
+        bool toBeContinued = true;
 
-	bool toBeContinued = true;
+        while (toBeContinued)
+        {
+                DWORD waitStatus = ::WaitForSingleObject(buf->getMonitoringEvent(), 250);
 
-	while (toBeContinued)
-	{
-		DWORD waitStatus = ::WaitForMultipleObjects(_countof(changeHandles), changeHandles, FALSE, 250);
-		switch (waitStatus)
-		{
-			case WAIT_OBJECT_0 + 0:
-			// Mutex was signaled. User removes this folder or file browser is closed
-			{
-				toBeContinued = false;
-			}
-			break;
+                if (waitStatus == WAIT_OBJECT_0)
+                {
+                        toBeContinued = false;
+                        continue;
+                }
 
-			case WAIT_OBJECT_0 + 1:
-			// We've received a notification in the queue.
-			{
-				bool bDoneOnce = false;
-				DWORD dwAction = 0;
-				wstring fn;
-				// Process all available changes, ignore User actions
-				while (dirChanges.Pop(dwAction, fn))
-				{
-					// Fix monitoring files which are under root problem
-					size_t pos = fn.find(L"\\\\");
-					if (pos == 2)
-						fn.replace(pos, 2, L"\\");
+                if (waitStatus == WAIT_FAILED)
+                {
+                        break;
+                }
 
-					if (wcscmp(fullFileName, fn.c_str()) == 0)
-					{
-						if (dwAction == FILE_ACTION_MODIFIED)
-						{
-							if (!bDoneOnce)
-							{
-								::PostMessage(h, NPPM_INTERNAL_RELOADSCROLLTOEND, reinterpret_cast<WPARAM>(buf), 0);
-								bDoneOnce = true;
-								Sleep(250);	// Limit refresh rate
-							}
-						}
-						else if ((dwAction == FILE_ACTION_REMOVED) || (dwAction == FILE_ACTION_RENAMED_OLD_NAME))
-						{
-							// File is deleted or renamed - quit monitoring thread and close file
-							::PostMessage(h, NPPM_INTERNAL_STOPMONITORING, reinterpret_cast<WPARAM>(buf), 0);
-						}
-					}
-				}
-			}
-			break;
+                bool reloadPosted = false;
 
-			case WAIT_TIMEOUT:
-			{
-				if (fileChanges.DetectChanges())
-					::PostMessage(h, NPPM_INTERNAL_RELOADSCROLLTOEND, reinterpret_cast<WPARAM>(buf), 0);
-			}
-			break;
+                if (watching)
+                {
+                        while (auto notification = fileWatcher->poll())
+                        {
+#ifdef _WIN32
+                                std::wstring eventPath = notification->path.wstring();
+                                size_t pos = eventPath.find(L\"\\\\\");
+                                if (pos == 2)
+                                        eventPath.replace(pos, 2, L\"\\\");
 
-			case WAIT_IO_COMPLETION:
-				// Nothing to do.
-			break;
-		}
-	}
+                                if (eventPath == fullPath.wstring())
+#else
+                                if (notification->path == fullPath)
+#endif
+                                {
+                                        if (notification->type == npp::platform::FileChangeType::Modified)
+                                        {
+                                                if (!reloadPosted)
+                                                {
+                                                        ::PostMessage(h, NPPM_INTERNAL_RELOADSCROLLTOEND, reinterpret_cast<WPARAM>(buf), 0);
+                                                        reloadPosted = true;
+                                                        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                                                }
+                                        }
+                                        else if (notification->type == npp::platform::FileChangeType::Removed || notification->type == npp::platform::FileChangeType::RenamedOldName)
+                                        {
+                                                ::PostMessage(h, NPPM_INTERNAL_STOPMONITORING, reinterpret_cast<WPARAM>(buf), 0);
+                                        }
+                                }
+                        }
+                }
 
-	// Just for sample purposes. The destructor will
-	// call Terminate() automatically.
-	dirChanges.Terminate();
-	fileChanges.Terminate();
-	delete monitorInfo;
-	return ERROR_SUCCESS;
+                if (!reloadPosted && changePoller.detectChanges())
+                {
+                        ::PostMessage(h, NPPM_INTERNAL_RELOADSCROLLTOEND, reinterpret_cast<WPARAM>(buf), 0);
+                        reloadPosted = true;
+                        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                }
+        }
+
+        if (fileWatcher)
+        {
+                fileWatcher->stop();
+        }
+
+        delete monitorInfo;
+        return ERROR_SUCCESS;
 }
 
 bool resolveLinkFile(std::wstring& linkFilePath)

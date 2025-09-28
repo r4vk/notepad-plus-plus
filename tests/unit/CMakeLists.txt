@@ -10,6 +10,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(npp_platform STATIC
     ${POWEREDITOR_SRC}/Platform/FileSystem.cpp
+    ${POWEREDITOR_SRC}/Platform/FileChangePoller.cpp
     ${POWEREDITOR_SRC}/Platform/PathProvider.cpp
     ${POWEREDITOR_SRC}/Platform/SettingsLocator.cpp
     ${POWEREDITOR_SRC}/Platform/SystemInfo.cpp
@@ -39,6 +40,7 @@ add_executable(npp_platform_tests
     platform/test_settings_locator.cpp
     platform/test_file_system.cpp
     platform/test_system_info.cpp
+    platform/test_file_change_poller.cpp
     platform/test_system_services.cpp
 )
 

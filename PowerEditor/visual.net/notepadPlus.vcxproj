@@ -131,6 +131,7 @@
     <ClCompile Include="..\src\MISC\Common\Common.cpp" />
     <ClCompile Include="..\src\MISC\Common\FileInterface.cpp" />
     <ClCompile Include="..\src\Platform\FileSystem.cpp" />
+    <ClCompile Include="..\src\Platform\FileChangePoller.cpp" />
     <ClCompile Include="..\src\Platform\PathProvider.cpp" />
     <ClCompile Include="..\src\Platform\SettingsLocator.cpp" />
     <ClCompile Include="..\src\Platform\SystemInfo.cpp" />
@@ -256,6 +257,7 @@
     <ClInclude Include="..\src\MISC\Common\Sorters.h" />
     <ClInclude Include="..\src\MISC\Common\SortLocale.h" />
     <ClInclude Include="..\src\Platform\FileSystem.h" />
+    <ClInclude Include="..\src\Platform\FileChangePoller.h" />
     <ClInclude Include="..\src\Platform\PathProvider.h" />
     <ClInclude Include="..\src\Platform\SettingsLocator.h" />
     <ClInclude Include="..\src\Platform\SystemServices.h" />
