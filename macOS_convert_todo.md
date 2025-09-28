@@ -25,7 +25,8 @@
 - "Abstrahować kopiowanie plików w konfiguracji Notepad++ przez npp::platform::copyFile (+)"
 - "Wydzielić moduł informacji o systemie (npp::platform::SystemInfo) i podpiąć go pod Debug Info (+)"
 - "Zaplanować migrację funkcji rejestru Windows na pliki konfiguracyjne/CFPreferences w macOS (+)"
-- "Utworzyć moduł `npp::platform::PreferencesStore` z backendami Windows/macOS i zrefaktoryzować istniejące odwołania do rejestru"
+- "Utworzyć moduł `npp::platform::PreferencesStore` z backendami Windows/macOS" (+)
+- "Zrefaktoryzować istniejące odwołania do rejestru, aby korzystały z `PreferencesStore`"
 - "Przygotować migrator ustawień importujący `config.xml` oraz eksport `.reg` do nowych preferencji"
 - "Udokumentować API preferencji dla twórców wtyczek i przygotować przykładowe wdrożenia"
 - "Przygotować alternatywę dla wbudowanego managera aktualizacji opartego o WinInet (np. wykorzystanie URLSession/CFNetwork)"

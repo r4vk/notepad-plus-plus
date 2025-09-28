@@ -10,11 +10,151 @@
 #include <filesystem>
 #include <mutex>
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace npp::platform
 {
     namespace
     {
+        constexpr const wchar_t* kPreferencesRootKey = L"Software\\Notepad++\\macOSPort\\Preferences";
+
+        std::wstring sanitizeDomain(const std::wstring& domain)
+        {
+            std::wstring sanitized = domain;
+            std::replace(sanitized.begin(), sanitized.end(), L'/', L'\\');
+            return sanitized;
+        }
+
+        std::wstring buildSubKey(const std::wstring& domain)
+        {
+            if (domain.empty())
+            {
+                return kPreferencesRootKey;
+            }
+
+            std::wstring subKey = kPreferencesRootKey;
+            subKey += L"\\";
+            subKey += sanitizeDomain(domain);
+            return subKey;
+        }
+
+        class WindowsPreferencesStore final : public PreferencesStore
+        {
+        public:
+            bool setString(const std::wstring& domain, const std::wstring& key, const std::wstring& value) override
+            {
+                const DWORD size = static_cast<DWORD>((value.size() + 1u) * sizeof(wchar_t));
+                return setValue(domain, key, REG_SZ, reinterpret_cast<const BYTE*>(value.c_str()), size);
+            }
+
+            std::optional<std::wstring> getString(const std::wstring& domain, const std::wstring& key) override
+            {
+                std::vector<wchar_t> buffer(256u);
+                DWORD size = static_cast<DWORD>(buffer.size() * sizeof(wchar_t));
+                const std::wstring subKey = buildSubKey(domain);
+
+                LONG status = ::RegGetValueW(HKEY_CURRENT_USER, subKey.c_str(), key.c_str(), RRF_RT_REG_SZ, nullptr, buffer.data(), &size);
+                if (status == ERROR_MORE_DATA)
+                {
+                    buffer.resize(size / sizeof(wchar_t));
+                    status = ::RegGetValueW(HKEY_CURRENT_USER, subKey.c_str(), key.c_str(), RRF_RT_REG_SZ, nullptr, buffer.data(), &size);
+                }
+
+                if (status != ERROR_SUCCESS)
+                {
+                    return std::nullopt;
+                }
+
+                buffer.resize(size / sizeof(wchar_t));
+
+                if (!buffer.empty() && buffer.back() == L'\0')
+                {
+                    buffer.pop_back();
+                }
+
+                return std::wstring(buffer.begin(), buffer.end());
+            }
+
+            bool setInt64(const std::wstring& domain, const std::wstring& key, std::int64_t value) override
+            {
+                const std::int64_t data = value;
+                return setValue(domain, key, REG_QWORD, reinterpret_cast<const BYTE*>(&data), sizeof(data));
+            }
+
+            std::optional<std::int64_t> getInt64(const std::wstring& domain, const std::wstring& key) override
+            {
+                const std::wstring subKey = buildSubKey(domain);
+                std::int64_t value = 0;
+                DWORD size = sizeof(value);
+                if (::RegGetValueW(HKEY_CURRENT_USER, subKey.c_str(), key.c_str(), RRF_RT_REG_QWORD, nullptr, &value, &size) != ERROR_SUCCESS)
+                {
+                    return std::nullopt;
+                }
+
+                return value;
+            }
+
+            bool setBoolean(const std::wstring& domain, const std::wstring& key, bool value) override
+            {
+                const DWORD data = value ? 1u : 0u;
+                return setValue(domain, key, REG_DWORD, reinterpret_cast<const BYTE*>(&data), sizeof(data));
+            }
+
+            std::optional<bool> getBoolean(const std::wstring& domain, const std::wstring& key) override
+            {
+                const std::wstring subKey = buildSubKey(domain);
+                DWORD data = 0u;
+                DWORD size = sizeof(data);
+                if (::RegGetValueW(HKEY_CURRENT_USER, subKey.c_str(), key.c_str(), RRF_RT_REG_DWORD, nullptr, &data, &size) != ERROR_SUCCESS)
+                {
+                    return std::nullopt;
+                }
+
+                return data != 0u;
+            }
+
+            bool remove(const std::wstring& domain, const std::wstring& key) override
+            {
+                const std::wstring subKey = buildSubKey(domain);
+                const LONG status = ::RegDeleteKeyValueW(HKEY_CURRENT_USER, subKey.c_str(), key.c_str());
+                if (status == ERROR_FILE_NOT_FOUND || status == ERROR_PATH_NOT_FOUND)
+                {
+                    return false;
+                }
+
+                return status == ERROR_SUCCESS;
+            }
+
+            bool clearDomain(const std::wstring& domain) override
+            {
+                const std::wstring subKey = buildSubKey(domain);
+                const LONG status = ::RegDeleteTreeW(HKEY_CURRENT_USER, subKey.c_str());
+                if (status == ERROR_FILE_NOT_FOUND || status == ERROR_PATH_NOT_FOUND)
+                {
+                    return false;
+                }
+
+                return status == ERROR_SUCCESS;
+            }
+
+        private:
+            bool setValue(const std::wstring& domain, const std::wstring& key, DWORD type, const BYTE* data, DWORD size)
+            {
+                const std::wstring subKey = buildSubKey(domain);
+                HKEY handle = nullptr;
+                const LONG createStatus = ::RegCreateKeyExW(HKEY_CURRENT_USER, subKey.c_str(), 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &handle, nullptr);
+                if (createStatus != ERROR_SUCCESS)
+                {
+                    return false;
+                }
+
+                const LONG status = ::RegSetValueExW(handle, key.c_str(), 0, type, data, size);
+                ::RegCloseKey(handle);
+                return status == ERROR_SUCCESS;
+            }
+        };
+
         class ClipboardCloser
         {
         public:
@@ -250,8 +390,14 @@ namespace npp::platform
                 return std::make_unique<WindowsFileWatcher>();
             }
 
+            PreferencesStore& preferences() override
+            {
+                return preferences_;
+            }
+
         private:
             WindowsClipboardService clipboard_;
+            WindowsPreferencesStore preferences_;
         };
     }
 

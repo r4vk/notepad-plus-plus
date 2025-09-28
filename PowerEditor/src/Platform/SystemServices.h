@@ -8,6 +8,28 @@
 
 namespace npp::platform
 {
+    class PreferencesStore
+    {
+    public:
+        virtual ~PreferencesStore() = default;
+
+        virtual bool setString(const std::wstring& domain, const std::wstring& key, const std::wstring& value) = 0;
+
+        virtual std::optional<std::wstring> getString(const std::wstring& domain, const std::wstring& key) = 0;
+
+        virtual bool setInt64(const std::wstring& domain, const std::wstring& key, std::int64_t value) = 0;
+
+        virtual std::optional<std::int64_t> getInt64(const std::wstring& domain, const std::wstring& key) = 0;
+
+        virtual bool setBoolean(const std::wstring& domain, const std::wstring& key, bool value) = 0;
+
+        virtual std::optional<bool> getBoolean(const std::wstring& domain, const std::wstring& key) = 0;
+
+        virtual bool remove(const std::wstring& domain, const std::wstring& key) = 0;
+
+        virtual bool clearDomain(const std::wstring& domain) = 0;
+    };
+
     enum class FileWatchEvent : std::uint32_t
     {
         None = 0u,
@@ -95,6 +117,8 @@ namespace npp::platform
         virtual ClipboardService& clipboard() = 0;
 
         virtual std::unique_ptr<FileWatcher> createFileWatcher() = 0;
+
+        virtual PreferencesStore& preferences() = 0;
 
         static SystemServices& instance();
     };

@@ -42,6 +42,7 @@ add_executable(npp_platform_tests
     platform/test_system_info.cpp
     platform/test_file_change_poller.cpp
     platform/test_system_services.cpp
+    platform/test_preferences_store.cpp
 )
 
 target_link_libraries(npp_platform_tests
