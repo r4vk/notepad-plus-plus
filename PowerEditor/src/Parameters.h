@@ -1927,6 +1927,7 @@ private:
         ~NppParameters();
 
         void loadPreferencesOverrides();
+        void backfillPreferencesStore() const;
         void persistPreferencesToStore() const;
         static constexpr const wchar_t* guiPreferencesDomain() { return L"notepad.gui"; }
         static constexpr const wchar_t* backupPreferencesDomain() { return L"notepad.gui.backup"; }

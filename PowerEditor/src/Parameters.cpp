@@ -24,6 +24,7 @@
 #endif
 #include "Parameters.h"
 #include "Platform/FileSystem.h"
+#include "Platform/PreferencesSync.h"
 #include "Platform/SettingsLocator.h"
 #include "Platform/SystemServices.h"
 #include "ScintillaEditView.h"
@@ -42,6 +43,26 @@ using namespace std;
 
 namespace // anonymous namespace
 {
+
+        npp::platform::GuiPreferencesSnapshot makeGuiPreferencesSnapshot(const NppGUI& gui)
+        {
+                npp::platform::GuiPreferencesSnapshot snapshot{};
+                snapshot.rememberLastSession = gui._rememberLastSession;
+                snapshot.keepSessionAbsentFileEntries = gui._keepSessionAbsentFileEntries;
+                snapshot.detectEncoding = gui._detectEncoding;
+                snapshot.saveAllConfirm = gui._saveAllConfirm;
+                snapshot.checkHistoryFiles = gui._checkHistoryFiles;
+                snapshot.muteSounds = gui._muteSounds;
+                snapshot.trayIconBehavior = gui._isMinimizedToTray;
+                snapshot.multiInstanceBehavior = static_cast<int>(gui._multiInstSetting);
+                snapshot.fileAutoDetectionMask = gui._fileAutoDetection;
+                snapshot.backupStrategy = static_cast<int>(gui._backup);
+                snapshot.useCustomDirectory = gui._useDir;
+                snapshot.isSnapshotMode = gui._isSnapshotMode;
+                snapshot.snapshotIntervalMs = gui._snapshotBackupTiming;
+                snapshot.backupDirectory = gui._backupDir;
+                return snapshot;
+        }
 
 
 struct WinMenuKeyDefinition // more or less matches accelerator table definition, easy copy/paste
@@ -1354,6 +1375,7 @@ bool NppParameters::load()
                 getUserParametersFromXmlTree();
         }
 
+        backfillPreferencesStore();
         loadPreferencesOverrides();
 
 	//----------------------------//
@@ -2049,34 +2071,23 @@ void NppParameters::loadPreferencesOverrides()
 }
 
 
+void NppParameters::backfillPreferencesStore() const
+{
+        auto& preferences = npp::platform::SystemServices::instance().preferences();
+        const std::wstring guiDomain(guiPreferencesDomain());
+        const std::wstring backupDomain(backupPreferencesDomain());
+        const auto snapshot = makeGuiPreferencesSnapshot(_nppGUI);
+        npp::platform::backfillGuiPreferences(preferences, guiDomain, backupDomain, snapshot);
+}
+
+
 void NppParameters::persistPreferencesToStore() const
 {
         auto& preferences = npp::platform::SystemServices::instance().preferences();
         const std::wstring guiDomain(guiPreferencesDomain());
         const std::wstring backupDomain(backupPreferencesDomain());
-
-        preferences.setBoolean(guiDomain, L"rememberLastSession", _nppGUI._rememberLastSession);
-        preferences.setBoolean(guiDomain, L"keepSessionAbsentFileEntries", _nppGUI._keepSessionAbsentFileEntries);
-        preferences.setBoolean(guiDomain, L"detectEncoding", _nppGUI._detectEncoding);
-        preferences.setBoolean(guiDomain, L"saveAllConfirm", _nppGUI._saveAllConfirm);
-        preferences.setBoolean(guiDomain, L"checkHistoryFiles", _nppGUI._checkHistoryFiles);
-        preferences.setBoolean(guiDomain, L"muteSounds", _nppGUI._muteSounds);
-        preferences.setInt64(guiDomain, L"trayIconBehavior", static_cast<std::int64_t>(_nppGUI._isMinimizedToTray));
-        preferences.setInt64(guiDomain, L"multiInstanceBehavior", static_cast<std::int64_t>(_nppGUI._multiInstSetting));
-        preferences.setInt64(guiDomain, L"fileAutoDetectionMask", static_cast<std::int64_t>(_nppGUI._fileAutoDetection));
-
-        preferences.setInt64(backupDomain, L"strategy", static_cast<std::int64_t>(_nppGUI._backup));
-        preferences.setBoolean(backupDomain, L"useCustomDirectory", _nppGUI._useDir);
-        preferences.setBoolean(backupDomain, L"isSnapshotMode", _nppGUI._isSnapshotMode);
-
-        const auto snapshotValue = std::min<std::size_t>(_nppGUI._snapshotBackupTiming,
-                static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()));
-        preferences.setInt64(backupDomain, L"snapshotIntervalMs", static_cast<std::int64_t>(snapshotValue));
-
-        if (_nppGUI._useDir && !_nppGUI._backupDir.empty())
-                preferences.setString(backupDomain, L"directory", _nppGUI._backupDir);
-        else
-                preferences.remove(backupDomain, L"directory");
+        const auto snapshot = makeGuiPreferencesSnapshot(_nppGUI);
+        npp::platform::persistGuiPreferences(preferences, guiDomain, backupDomain, snapshot);
 }
 
 

@@ -95,6 +95,7 @@ SET(src_files
                         ./MISC/Common/SortLocale.cpp
                         ./Platform/FileSystem.cpp
                         ./Platform/FileChangePoller.cpp
+                        ./Platform/PreferencesSync.cpp
                         ./Platform/PathProvider.cpp
                         ./Platform/SettingsLocator.cpp
                         ./Platform/SystemInfo.cpp

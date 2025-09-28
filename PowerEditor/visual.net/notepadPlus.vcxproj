@@ -216,6 +216,7 @@
     <ClCompile Include="..\src\WinControls\ReadDirectoryChanges\ReadDirectoryChanges.cpp" />
     <ClCompile Include="..\src\WinControls\ReadDirectoryChanges\ReadDirectoryChangesPrivate.cpp" />
     <ClCompile Include="..\src\WinControls\ReadDirectoryChanges\ReadFileChanges.cpp" />
+    <ClCompile Include="..\src\Platform\PreferencesSync.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\src\MISC\md5\md5Dlgs.rc" />
@@ -258,6 +259,7 @@
     <ClInclude Include="..\src\MISC\Common\SortLocale.h" />
     <ClInclude Include="..\src\Platform\FileSystem.h" />
     <ClInclude Include="..\src\Platform\FileChangePoller.h" />
+    <ClInclude Include="..\src\Platform\PreferencesSync.h" />
     <ClInclude Include="..\src\Platform\PathProvider.h" />
     <ClInclude Include="..\src\Platform\SettingsLocator.h" />
     <ClInclude Include="..\src\Platform\SystemServices.h" />
