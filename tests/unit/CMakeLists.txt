@@ -13,6 +13,8 @@ add_library(npp_platform STATIC
     ${POWEREDITOR_SRC}/Platform/PathProvider.cpp
     ${POWEREDITOR_SRC}/Platform/SettingsLocator.cpp
     ${POWEREDITOR_SRC}/Platform/SystemInfo.cpp
+    ${POWEREDITOR_SRC}/Platform/SystemServices.cpp
+    ${POWEREDITOR_SRC}/Platform/SystemServices_Windows.cpp
 )
 
 target_include_directories(npp_platform
@@ -37,6 +39,7 @@ add_executable(npp_platform_tests
     platform/test_settings_locator.cpp
     platform/test_file_system.cpp
     platform/test_system_info.cpp
+    platform/test_system_services.cpp
 )
 
 target_link_libraries(npp_platform_tests

@@ -17,7 +17,7 @@
 
 ## Refaktoryzacja warstwy bazowej i abstrakcje systemowe
 - "Wydzielić moduły logiki niezależnej od UI (edytor, zarządzanie plikami, ustawienia) z PowerEditor/src do bibliotek możliwych do wielokrotnego użycia"
-- "Zaprojektować API warstwy abstrakcji dla usług systemowych (okna, zdarzenia, schowek, monitoring plików, drukowanie) i wprowadzić implementację referencyjną dla Windows jako krok pośredni"
+- "Zaprojektować API warstwy abstrakcji dla usług systemowych (okna, zdarzenia, schowek, monitoring plików, drukowanie) i wprowadzić implementację referencyjną dla Windows jako krok pośredni (+)"
 - "Zastąpić bezpośrednie wywołania Win32 (HWND, SendMessage, WNDPROC, SHFileOperation itp.) odpowiednim interfejsem pośredniczącym"
 - "Utworzyć moduł zarządzania preferencjami i profilem użytkownika oparty na ścieżkach macOS (~/Library/Application Support/Notepad++) (+)"
 - "Wprowadzić moduł platformowy dla ścieżek użytkownika (npp::platform::PathProvider) i podpiąć go w NppParameters (+)"
