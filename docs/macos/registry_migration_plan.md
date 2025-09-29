@@ -78,3 +78,9 @@ ustawień dla Windows i macOS. Dzięki temu:
 - preferencje staną się przenośne pomiędzy systemami,
 - poprawimy bezpieczeństwo (brak zapisu w HKLM) i zgodność z politykami Apple (sandbox, notarizacja),
 - wtyczki otrzymają nowoczesny, stabilny interfejs na lata.
+
+## Stan implementacji (aktualizacja)
+
+- Moduł `Platform/PreferencesMigrator` importuje preferencje z `config.xml` oraz eksportów `.reg` w formacie UTF-16.
+- Podczas startu `NppParameters` uruchamia migrację (z zachowaniem istniejących wartości) i automatycznie lokalizuje pliki `preferences.reg`, `preferences_export.reg` lub `windows-preferences.reg` w katalogu ustawień użytkownika.
+- Jednostkowe testy `tests/unit/platform/test_preferences_migrator.cpp` odtwarzają scenariusze migracji GUI/backup oraz weryfikują brak nadpisywania wcześniej zapisanych wartości.

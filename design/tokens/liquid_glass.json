@@ -1,0 +1,55 @@
+{
+  "colors": {
+    "lg.surface.primary.light": "#F5F7FAF2",
+    "lg.surface.primary.dark": "#1C1F24CC",
+    "lg.surface.secondary.light": "#FFFFFFE7",
+    "lg.surface.secondary.dark": "#1F2328CC",
+    "lg.glass.highlight.light": "#FFFFFF80",
+    "lg.glass.highlight.dark": "#FFFFFF33",
+    "lg.text.primary.light": "#131722",
+    "lg.text.primary.dark": "#E9EDF5",
+    "lg.text.secondary.light": "#4B5565",
+    "lg.text.secondary.dark": "#B2B8C4",
+    "lg.accent.blue.light": "#3C74F6",
+    "lg.accent.blue.dark": "#7AA2FF",
+    "lg.accent.green.light": "#3AC27C",
+    "lg.accent.green.dark": "#55DDA1",
+    "lg.accent.orange.light": "#F29F4C",
+    "lg.accent.orange.dark": "#F3B270",
+    "lg.accent.red.light": "#F2665D",
+    "lg.accent.red.dark": "#F57F79",
+    "lg.border.muted.light": "#D7DCE5",
+    "lg.border.muted.dark": "#2A3036"
+  },
+  "typography": {
+    "lg.font.display": {
+      "family": "SF Pro Display",
+      "weight": 600,
+      "size_pt": 18
+    },
+    "lg.font.body": {
+      "family": "SF Pro Text",
+      "weight": 400,
+      "size_pt": 13
+    },
+    "lg.font.caption": {
+      "family": "SF Pro Text",
+      "weight": 400,
+      "size_pt": 11
+    },
+    "lg.font.mono": {
+      "family": "SF Mono",
+      "weight": 400,
+      "size_pt": 12
+    }
+  },
+  "spacing": {
+    "lg.spacing.xs": 4,
+    "lg.spacing.sm": 8,
+    "lg.spacing.md": 12,
+    "lg.spacing.lg": 16,
+    "lg.corner.radius.panel": 9,
+    "lg.corner.radius.button": 6,
+    "lg.shadow.glass": "0px 12px 24px rgba(0, 0, 0, 0.18)"
+  }
+}

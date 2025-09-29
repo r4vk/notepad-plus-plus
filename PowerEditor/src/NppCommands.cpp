@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include <filesystem>
 #include <memory>
 #include <regex>
 #include <shlwapi.h>
+#include "Platform/ApplicationLauncher.h"
 #include "Notepad_plus_Window.h"
 #include "EncodingMapper.h"
 #include "ShortcutMapper.h"
@@ -2295,55 +2297,19 @@ void Notepad_plus::command(int id)
 			auto currentBuf = _pEditView->getCurrentBuffer();
 			if (!currentBuf->isUntitled())
 			{
-				wstring appName;
+				const std::filesystem::path documentPath(currentBuf->getFullPathName());
 
-				if (id == IDM_VIEW_IN_FIREFOX)
+				npp::platform::Browser browser = npp::platform::Browser::Default;
+				switch (id)
 				{
-					appName = L"firefox.exe";
-				}
-				else if (id == IDM_VIEW_IN_CHROME)
-				{
-					appName = L"chrome.exe";
-				}
-				else if (id == IDM_VIEW_IN_EDGE)
-				{
-					appName = L"msedge.exe";
-				}
-				else // if (id == IDM_VIEW_IN_IE)
-				{
-					appName = L"IEXPLORE.EXE";
+				case IDM_VIEW_IN_FIREFOX: browser = npp::platform::Browser::Firefox; break;
+				case IDM_VIEW_IN_CHROME: browser = npp::platform::Browser::Chrome; break;
+				case IDM_VIEW_IN_EDGE: browser = npp::platform::Browser::Edge; break;
+				case IDM_VIEW_IN_IE: browser = npp::platform::Browser::InternetExplorer; break;
+				default: break;
 				}
 
-				wchar_t valData[MAX_PATH] = {'\0'};
-				DWORD valDataLen = MAX_PATH * sizeof(wchar_t);
-				DWORD valType = 0;
-				HKEY hKey2Check = nullptr;
-				wstring appEntry = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\";
-				appEntry += appName;
-				::RegOpenKeyEx(HKEY_LOCAL_MACHINE, appEntry.c_str(), 0, KEY_READ, &hKey2Check);
-				::RegQueryValueEx(hKey2Check, L"", nullptr, &valType, reinterpret_cast<LPBYTE>(valData), &valDataLen);
-
-
-				wstring fullCurrentPath = L"\"";
-				fullCurrentPath += currentBuf->getFullPathName();
-				fullCurrentPath += L"\"";
-
-				if (hKey2Check && valData[0] != '\0')
-				{
-					::ShellExecute(NULL, L"open", valData, fullCurrentPath.c_str(), NULL, SW_SHOWNORMAL);
-				}
-				else if (id == IDM_VIEW_IN_EDGE)
-				{
-					// Try the Legacy version
-
-					// Don't put the quotes for Edge, otherwise it doesn't work
-					//fullCurrentPath = L"\"";
-					fullCurrentPath = currentBuf->getFullPathName();
-					//fullCurrentPath += L"\"";
-
-					::ShellExecute(NULL, L"open", L"shell:Appsfolder\\Microsoft.MicrosoftEdge_8wekyb3d8bbwe!MicrosoftEdge", fullCurrentPath.c_str(), NULL, SW_SHOW);
-				} 
-				else 
+				if (!npp::platform::openDocumentInBrowser(browser, documentPath))
 				{
 					_nativeLangSpeaker.messageBox("ViewInBrowser",
 						_pPublicInterface->getHSelf(),
@@ -2351,7 +2317,6 @@ void Notepad_plus::command(int id)
 						L"View Current File in Browser",
 						MB_OK);
 				}
-				::RegCloseKey(hKey2Check);
 			}
 		}
 		break;

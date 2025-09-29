@@ -25,6 +25,7 @@
 #include <vssym32.h>
 
 #include "Parameters.h"
+#include "Platform/SystemAppearance.h"
 #include "resource.h"
 #include "dpiManagerV2.h"
 
@@ -897,19 +898,16 @@ namespace NppDarkMode
 
 	bool isDarkModeReg()
 	{
-		DWORD data{};
-		DWORD dwBufSize = sizeof(data);
-		LPCTSTR lpSubKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
-		LPCTSTR lpValue = L"AppsUseLightTheme";
-
-		auto result = RegGetValue(HKEY_CURRENT_USER, lpSubKey, lpValue, RRF_RT_REG_DWORD, nullptr, &data, &dwBufSize);
-		if (result != ERROR_SUCCESS)
+		const auto scheme = npp::platform::preferredColorScheme();
+		if (scheme == npp::platform::PreferredColorScheme::Dark)
+		{
+			return true;
+		}
+		if (scheme == npp::platform::PreferredColorScheme::Light)
 		{
 			return false;
 		}
-
-		// dark mode is 0, light mode is 1
-		return data == 0UL;
+		return false;
 	}
 
 	// processes messages related to UAH / custom menubar drawing.

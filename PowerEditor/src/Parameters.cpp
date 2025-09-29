@@ -17,13 +17,16 @@
 #include <time.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <limits>
 
 #ifdef _WIN32
 #include <shlobj.h>
+#include <debugapi.h>
 #endif
 #include "Parameters.h"
 #include "Platform/FileSystem.h"
+#include "Platform/PreferencesMigrator.h"
 #include "Platform/PreferencesSync.h"
 #include "Platform/SettingsLocator.h"
 #include "Platform/SystemServices.h"
@@ -1373,6 +1376,46 @@ bool NppParameters::load()
         else
         {
                 getUserParametersFromXmlTree();
+        }
+
+        {
+                npp::platform::PreferencesMigrationConfig migrationConfig{};
+                migrationConfig.configXmlPath = std::filesystem::path(configPath);
+                migrationConfig.guiDomain = guiPreferencesDomain();
+                migrationConfig.backupDomain = backupPreferencesDomain();
+                migrationConfig.skipExistingValues = true;
+
+                const std::filesystem::path userDirectory = std::filesystem::path(_userPath);
+                const std::wstring registryCandidates[] = {
+                        L"preferences.reg",
+                        L"preferences_export.reg",
+                        L"windows-preferences.reg"
+                };
+
+                for (const auto& candidate : registryCandidates)
+                {
+                        const std::filesystem::path candidatePath = userDirectory / candidate;
+                        if (npp::platform::fileExists(candidatePath.wstring()))
+                        {
+                                migrationConfig.registryExportPath = candidatePath;
+                                break;
+                        }
+                }
+
+                auto& preferencesStore = npp::platform::SystemServices::instance().preferences();
+                const auto migrationReport = npp::platform::migratePreferences(migrationConfig, preferencesStore);
+
+#ifdef _WIN32
+                for (const auto& warning : migrationReport.warnings)
+                {
+                        std::wstring message = L"[PreferencesMigration] ";
+                        message += warning;
+                        message += L"\n";
+                        ::OutputDebugStringW(message.c_str());
+                }
+#else
+                (void)migrationReport;
+#endif
         }
 
         backfillPreferencesStore();

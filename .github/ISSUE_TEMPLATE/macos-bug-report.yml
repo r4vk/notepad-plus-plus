@@ -1,0 +1,88 @@
+name: macOS Bug
+description: Report a problem specific to the macOS port preview
+labels: ["macOS", "bug"]
+title: "[macOS BUG] <title>"
+body:
+- type: markdown
+  attributes:
+    value: |
+      Thank you for helping us stabilise the macOS port. Please provide as much diagnostic detail as possible.
+- type: checkboxes
+  attributes:
+    label: Is there an existing issue for this?
+    options:
+    - label: I have searched existing issues (macOS and general) and did not find a match
+      required: true
+- type: textarea
+  attributes:
+    label: Summary
+    description: Describe the problem in one or two short paragraphs.
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Steps To Reproduce
+    description: List step-by-step instructions so we can reproduce the issue.
+    placeholder: |
+      1. Launch Notepad++ preview on macOS …
+      2. …
+      3. …
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Expected Behaviour
+    description: What should have happened?
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Actual Behaviour
+    description: What actually happened? Include any crash dialogs or console output.
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: Notepad++ build information
+    description: Paste the value from **Notepad++ → Help → About → Copy build info** (or CLI `--version`).
+    placeholder: Notepad++ macOS Preview r2 (commit abc123)
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: macOS version
+    description: Use **apple menu → About This Mac → macOS Ventura 13.5 (22G74)** format.
+    placeholder: macOS Sonoma 14.5 (23F79)
+  validations:
+    required: true
+- type: dropdown
+  attributes:
+    label: Hardware architecture
+    options:
+      - Apple Silicon (arm64)
+      - Intel (x86_64)
+      - Other / virtualised
+    default: 0
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Plugins and customisations
+    description: List enabled plugins, custom configuration folders, or mention "none".
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Diagnostics
+    description: |
+      Attach crash logs (Console.app → Crash Reports), the latest entries from `~/Library/Logs/Notepad++/*.log`, or terminal output if you launched from CLI.
+      Drag and drop files into this field or paste snippets.
+    render: shell
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Additional context / screenshots
+    description: Optional information that helps illustrate the issue.
+  validations:
+    required: false

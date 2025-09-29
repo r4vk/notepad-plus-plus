@@ -24,17 +24,11 @@
 - "Zastąpić w NppParameters użycie PathFileExists/WinAPI tworzeniem katalogów przez platform::ensureDirectoryExists (+)"
 - "Abstrahować kopiowanie plików w konfiguracji Notepad++ przez npp::platform::copyFile (+)"
 - "Wydzielić moduł informacji o systemie (npp::platform::SystemInfo) i podpiąć go pod Debug Info (+)"
-- "Zaplanować migrację funkcji rejestru Windows na pliki konfiguracyjne/CFPreferences w macOS (+)"
 - "Utworzyć moduł `npp::platform::PreferencesStore` z backendami Windows/macOS" (+)
 - "Zrefaktoryzować istniejące odwołania do rejestru, aby korzystały z `PreferencesStore` (+)"
-- "Przygotować migrator ustawień importujący `config.xml` oraz eksport `.reg` do nowych preferencji (+)"
-- "Udokumentować API preferencji dla twórców wtyczek i przygotować przykładowe wdrożenia"
-- "Przygotować alternatywę dla wbudowanego managera aktualizacji opartego o WinInet (np. wykorzystanie URLSession/CFNetwork)"
 
 ## Interfejs użytkownika i doświadczenie użytkownika
-- "Przeprowadzić inwentaryzację elementów UI zależnych od Win32 (Docking Manager, ToolBar, TreeView, rebar, status bar) oraz określić ich odpowiedniki w Cocoa/toolkicie wieloplatformowym"
 - "Zaprojektować moduł `npp::ui` z interfejsami Qt dla okien, paneli dokowanych i menubarów (Liquid Glass)"
-- "Przygotować bibliotekę stylów i tokenów projektowych Liquid Glass w Qt Quick/Qt Widgets"
 - "Zbudować prototyp głównego okna Qt z integracją Scintilli i panelem dokowanym w konwencji Liquid Glass"
 - "Zaprojektować makietę interfejsu macOS uwzględniającą menubar zgodny z HIG, pasek narzędzi NSToolbar, panel preferencji oraz widoki wielodokumentowe"
 - "Dostosować komponent edytora (Scintilla) do renderowania w kontenerze macOS (SCIModule dla Cocoa) wraz z obsługą HiDPI i trybu ciemnego systemowego"
@@ -52,10 +46,7 @@
 - "Zastąpić funkcje związane z paskiem zadań i ikoną w zasobniku odpowiednikami w Dock i menu statusowym"
 
 ## Architektura wtyczek i rozszerzeń
-- "Zmapować istniejące API wtyczek (message-based, Win32 HWND) i zaprojektować nową warstwę kompatybilności dla macOS"
 - "Przygotować SDK wtyczek dla macOS (nagłówki, przykładowe projekty Xcode/CMake, dokumentacja budowy)"
-- "Zdefiniować strategię dystrybucji wtyczek (katalog w ~/Library/Application Support, podpisywanie binarne, sandboxing)"
-- "Zweryfikować możliwość portowania najpopularniejszych wtyczek i zaplanować działania wspierające deweloperów społeczności"
 
 ## Dystrybucja, bezpieczeństwo i utrzymanie
 - "Zaprojektować strukturę pakietu .app (Info.plist, zasoby, ikonografia) oraz proces budowy DMG instalacyjnego"

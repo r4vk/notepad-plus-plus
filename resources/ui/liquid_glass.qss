@@ -1,0 +1,52 @@
+/* Generated from design/tokens/liquid_glass.json */
+
+/* Light mode defaults */
+
+QWidget {
+  background-color: rgba(245, 247, 250, 0.95);
+  color: rgb(19, 23, 34);
+  font-family: 'SF Pro Text';
+  font-size: 13pt;
+}
+
+QDockWidget::title {
+  background-color: rgba(255, 255, 255, 0.91);
+  padding: 8px;
+  margin: 0px;
+  font-family: 'SF Pro Display';
+  font-size: 18pt;
+  font-weight: 600;
+}
+
+QPushButton {
+  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(60, 116, 246), stop:1 rgb(122, 162, 255));
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.91);
+}
+
+QPushButton:disabled {
+  background: rgba(255, 255, 255, 0.91);
+  color: rgb(75, 85, 101);
+}
+
+QTreeView::item:selected {
+  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(60, 116, 246), stop:1 rgb(122, 162, 255));
+  color: rgba(255, 255, 255, 0.91);
+}
+
+/* Dark mode overrides (to be toggled dynamically) */
+
+[data-theme="dark"] QWidget {
+  background-color: rgba(28, 31, 36, 0.80);
+  color: rgb(233, 237, 245);
+}
+
+[data-theme="dark"] QDockWidget::title {
+  background-color: rgba(31, 35, 40, 0.80);
+  color: rgb(233, 237, 245);
+}
+
+[data-theme="dark"] QPushButton {
+  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(122, 162, 255), stop:1 rgb(60, 116, 246));
+}

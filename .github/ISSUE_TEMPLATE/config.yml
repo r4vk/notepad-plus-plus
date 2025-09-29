@@ -1,1 +1,8 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
+contact_links:
+  - name: Plugin-specific issue
+    url: https://community.notepad-plus-plus.org/category/5/plugin-development
+    about: Please contact the plugin author or use the community forum for plugin-specific problems.
+  - name: General discussion / Q&A
+    url: https://community.notepad-plus-plus.org/category/4/general-discussion
+    about: For questions not covered by the issue templates, start a discussion on the forum.

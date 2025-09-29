@@ -1,0 +1,60 @@
+name: macOS Feature Request
+description: Suggest enhancements specific to the macOS port
+labels: ["macOS", "enhancement"]
+title: "[macOS FEATURE] <title>"
+body:
+- type: markdown
+  attributes:
+    value: |
+      Use this form to propose improvements tailored to the macOS experience (UI/UX, integrations, distribution, etc.).
+- type: checkboxes
+  attributes:
+    label: Is there an existing feature request for this?
+    options:
+    - label: I have searched the open issues / discussions and did not find a duplicate
+      required: true
+- type: textarea
+  attributes:
+    label: Summary
+    description: Provide a clear description of the enhancement.
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Motivation / User story
+    description: Explain the problem solved or workflow improved for macOS users.
+    placeholder: |
+      As a … I want … so that …
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Proposed solution
+    description: Share details of the idea (mock-ups, behaviours, system integrations).
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Alternatives considered
+    description: Mention workarounds or other approaches you evaluated.
+  validations:
+    required: false
+- type: dropdown
+  attributes:
+    label: Area impacted
+    options:
+      - UI / UX
+      - macOS integration (Services, Spotlight, Dock)
+      - Plugins / SDK
+      - Distribution / Updates
+      - Accessibility
+      - Other
+    default: 0
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Additional context / references
+    description: Include links to designs, experiments, or related issues.
+  validations:
+    required: false
