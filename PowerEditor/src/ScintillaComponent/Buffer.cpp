@@ -26,7 +26,7 @@
 #include "ILexer.h"
 #include "Lexilla.h"
 #include "Parameters.h"
-#include "Notepad_plus.h"
+#include "Core/DocumentEnvironment.h"
 #include "ScintillaEditView.h"
 #include "EncodingMapper.h"
 #include "uchardet.h"
@@ -753,9 +753,9 @@ FileManager::~FileManager()
 	}
 }
 
-void FileManager::init(Notepad_plus * pNotepadPlus, ScintillaEditView * pscratchTilla)
+void FileManager::init(npp::core::DocumentEnvironment * environment, ScintillaEditView * pscratchTilla)
 {
-	_pNotepadPlus = pNotepadPlus;
+	_environment = environment;
 	_pscratchTilla = pscratchTilla;
 	_pscratchTilla->execute(SCI_SETUNDOCOLLECTION, false);	//don't store any undo information
 	_scratchDocDefault = (Document)_pscratchTilla->execute(SCI_GETDOCPOINTER);
@@ -764,10 +764,14 @@ void FileManager::init(Notepad_plus * pNotepadPlus, ScintillaEditView * pscratch
 
 void FileManager::checkFilesystemChanges(bool bCheckOnlyCurrentBuffer)
 {
+	if (!_environment)
+		return;
+
 	if (bCheckOnlyCurrentBuffer)
 	{
-		Buffer* buffer = _pNotepadPlus->getCurrentBuffer();
-		buffer->checkFileState();
+		Buffer* buffer = _environment->currentBuffer();
+		if (buffer)
+			buffer->checkFileState();
 	}
 	else
 	{

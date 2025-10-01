@@ -20,7 +20,6 @@
 #include "Utf8_16.h"
 
 
-class Notepad_plus;
 class Buffer;
 typedef Buffer* BufferID;	//each buffer has unique ID by which it can be retrieved
 #define BUFFER_INVALID	reinterpret_cast<BufferID>(0)
@@ -71,7 +70,7 @@ const wchar_t UNTITLED_STR[] = L"new ";
 //File manager class maintains all buffers
 class FileManager final {
 public:
-	void init(Notepad_plus* pNotepadPlus, ScintillaEditView* pscratchTilla);
+	void init(npp::core::DocumentEnvironment* environment, ScintillaEditView* pscratchTilla);
 
 	void checkFilesystemChanges(bool bCheckOnlyCurrentBuffer);
 
@@ -139,7 +138,7 @@ private:
 	bool loadFileData(Document doc, int64_t fileSize, const wchar_t* filename, char* buffer, Utf8_16_Read* UnicodeConvertor, LoadedFileFormat& fileFormat);
 	LangType detectLanguageFromTextBeginning(const unsigned char *data, size_t dataLen);
 
-	Notepad_plus* _pNotepadPlus = nullptr;
+	npp::core::DocumentEnvironment* _environment = nullptr;
 	ScintillaEditView* _pscratchTilla = nullptr;
 	Document _scratchDocDefault = 0;
 	std::vector<Buffer*> _buffers;
@@ -473,3 +472,7 @@ private:
 	bool _isRTL = false;
 	bool _isPinned = false;
 };
+namespace npp::core
+{
+    class DocumentEnvironment;
+}
