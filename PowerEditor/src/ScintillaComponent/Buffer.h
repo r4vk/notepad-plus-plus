@@ -71,6 +71,7 @@ const wchar_t UNTITLED_STR[] = L"new ";
 class FileManager final {
 public:
 	void init(npp::core::DocumentEnvironment* environment, ScintillaEditView* pscratchTilla);
+	npp::core::DocumentEnvironment* environment() const { return _environment; }
 
 	void checkFilesystemChanges(bool bCheckOnlyCurrentBuffer);
 

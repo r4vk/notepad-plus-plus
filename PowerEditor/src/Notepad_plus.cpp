@@ -47,6 +47,71 @@ using namespace std;
 
 chrono::steady_clock::duration g_pluginsLoadingTime{};
 
+bool Notepad_plus::DocumentEditViewAdapter::isWrapEnabled() const
+{
+	return _owner._pEditView ? _owner._pEditView->isWrap() : false;
+}
+
+std::size_t Notepad_plus::DocumentEditViewAdapter::documentLength() const
+{
+	return _owner._pEditView ? _owner._pEditView->getCurrentDocLen() : 0u;
+}
+
+sptr_t Notepad_plus::DocumentEditViewAdapter::sendEditorMessage(unsigned int msg, uptr_t wParam, sptr_t lParam)
+{
+	return _owner._pEditView ? _owner._pEditView->execute(msg, wParam, lParam) : 0;
+}
+
+npp::core::NativeWindowHandle Notepad_plus::DocumentEditViewAdapter::nativeHandle() const
+{
+#ifdef _WIN32
+	return _owner._pEditView ? reinterpret_cast<npp::core::NativeWindowHandle>(_owner._pEditView->getHSelf()) : nullptr;
+#else
+	return nullptr;
+#endif
+}
+
+Notepad_plus::DocumentEnvironmentBridge::DocumentEnvironmentBridge(Notepad_plus& owner)
+	: _owner(owner)
+	, _editViewAdapter(owner)
+{
+}
+
+Buffer* Notepad_plus::DocumentEnvironmentBridge::currentBuffer() const
+{
+	return _owner.getCurrentBuffer();
+}
+
+npp::core::EditView& Notepad_plus::DocumentEnvironmentBridge::editView()
+{
+	return _editViewAdapter;
+}
+
+const npp::core::EditView& Notepad_plus::DocumentEnvironmentBridge::editView() const
+{
+	return _editViewAdapter;
+}
+
+void Notepad_plus::DocumentEnvironmentBridge::notifyBufferChanged(Buffer* buffer, int mask)
+{
+	_owner.notifyBufferChanged(buffer, mask);
+}
+
+void Notepad_plus::DocumentEnvironmentBridge::executeCommand(int commandId)
+{
+	_owner.command(commandId);
+}
+
+void Notepad_plus::DocumentEnvironmentBridge::saveCurrentSession()
+{
+	_owner.saveCurrentSession();
+}
+
+void Notepad_plus::DocumentEnvironmentBridge::loadBufferIntoView(Buffer* buffer, int whichView)
+{
+	_owner.loadBufferIntoView(buffer, whichView);
+}
+
 enum tb_stat {tb_saved, tb_unsaved, tb_ro, tb_monitored};
 #define DIR_LEFT true
 #define DIR_RIGHT false
@@ -137,6 +202,7 @@ Notepad_plus::Notepad_plus()
 	, _smartHighlighter(&_findReplaceDlg)
 {
 	ZeroMemory(&_prevSelectedRange, sizeof(_prevSelectedRange));
+	_documentEnvironment = std::make_unique<DocumentEnvironmentBridge>(*this);
 
 	NppParameters& nppParam = NppParameters::getInstance();
 	TiXmlDocumentA *nativeLangDocRootA = nppParam.getNativeLangA();
@@ -228,7 +294,7 @@ LRESULT Notepad_plus::init(HWND hwnd)
 
 	_fileEditView.init(_pPublicInterface->getHinst(), hwnd);
 	_fileEditView.execute(SCI_SETMODEVENTMASK, MODEVENTMASK_OFF); // Turn off the modification event
-	MainFileManager.init(this, &_fileEditView); //get it up and running asap.
+	MainFileManager.init(_documentEnvironment.get(), &_fileEditView); //get it up and running asap.
 
 	nppParam.setFontList(hwnd);
 

@@ -67,6 +67,11 @@ SET(projIncludDir	../../scintilla/include/
 
 
 
+SET(core_sources
+			./ScintillaComponent/Buffer.cpp
+			./Parameters.cpp
+)
+
 SET(src_files
 			./DarkMode/DarkMode.cpp
 			./MISC/Common/verifySignedfile.cpp
@@ -85,7 +90,6 @@ SET(src_files
 			./WinControls/FileBrowser/fileBrowser.cpp
 			./WinControls/Grid/BabyGrid.cpp
 			./WinControls/Grid/BabyGridWrapper.cpp
-			./ScintillaComponent/Buffer.cpp
 			./uchardet/CharDistribution.cpp
 			./WinControls/ClipboardHistory/clipboardHistoryPanel.cpp
 			./WinControls/ColourPicker/ColourPicker.cpp
@@ -167,7 +171,6 @@ SET(src_files
 			./uchardet/nsSJISProber.cpp
 			./uchardet/nsUniversalDetector.cpp
 			./uchardet/nsUTF8Prober.cpp
-			./Parameters.cpp
 			./MISC/PluginsManager/PluginsManager.cpp
 			./WinControls/Preference/preferenceDlg.cpp
 			./ScintillaComponent/Printer.cpp
@@ -429,6 +432,16 @@ ADD_DEFINITIONS(${defs})
 
 INCLUDE_DIRECTORIES(${projIncludDir})
 
+add_library(npp_core STATIC ${core_sources})
+target_include_directories(npp_core
+    PUBLIC
+        ${projIncludDir}
+)
+target_compile_features(npp_core PUBLIC cxx_std_20)
+if (defs)
+    target_compile_definitions(npp_core PRIVATE ${defs})
+endif()
+
 find_library(SCINTILLA_STATIC_LIBRARY
 	NAMES libscintilla
 	HINTS "../../scintilla/bin"
@@ -453,5 +466,5 @@ endif()
 ADD_EXECUTABLE(notepad++ ${option} ${src_files} ${include_files} ${rcFiles})
 
 
-TARGET_LINK_LIBRARIES (notepad++ ${SCINTILLA_STATIC_LIBRARY} ${LEXILLA_STATIC_LIBRARY} ${win32_LIBRARIES})
+TARGET_LINK_LIBRARIES (notepad++ npp_core ${SCINTILLA_STATIC_LIBRARY} ${LEXILLA_STATIC_LIBRARY} ${win32_LIBRARIES})
 

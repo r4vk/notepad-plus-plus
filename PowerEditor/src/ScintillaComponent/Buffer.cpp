@@ -21,6 +21,9 @@
 #include <time.h>
 #include <locale>
 #include <sys/stat.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include "Buffer.h"
 #include "Scintilla.h"
 #include "ILexer.h"
@@ -38,6 +41,21 @@
 static const int blockSize = 128 * 1024 + 4;
 static const int CR = 0x0D;
 static const int LF = 0x0A;
+
+namespace
+{
+#ifdef _WIN32
+	HWND windowHandle(npp::core::DocumentEnvironment* environment)
+	{
+		return environment ? reinterpret_cast<HWND>(environment->editView().nativeHandle()) : nullptr;
+	}
+#else
+	void* windowHandle(npp::core::DocumentEnvironment* environment)
+	{
+		return environment ? environment->editView().nativeHandle() : nullptr;
+	}
+#endif
+}
 
 long Buffer::_recentTagCtr = 0;
 
@@ -820,7 +838,10 @@ Buffer* FileManager::getBufferByIndex(size_t index)
 
 void FileManager::beNotifiedOfBufferChange(Buffer* theBuf, int mask)
 {
-	_pNotepadPlus->notifyBufferChanged(theBuf, mask);
+	if (_environment)
+	{
+		_environment->notifyBufferChanged(theBuf, mask);
+	}
 }
 
 
@@ -892,12 +913,12 @@ BufferID FileManager::loadFile(const wchar_t* filename, Document doc, int encodi
 		isLargeFile = fileSize >= nppGui._largeFileRestriction._largeFileSizeDefInByte;
 
 	// Due to the performance issue, the Word Wrap feature will be disabled if it's ON
-	if (isLargeFile && nppGui._largeFileRestriction._deactivateWordWrap)
+	if (isLargeFile && nppGui._largeFileRestriction._deactivateWordWrap && _environment)
 	{
-		bool isWrap = _pNotepadPlus->_pEditView->isWrap();
-		if (isWrap)
+		npp::core::EditView& editView = _environment->editView();
+		if (editView.isWrapEnabled())
 		{
-			_pNotepadPlus->command(IDM_VIEW_WRAP);
+			_environment->executeCommand(IDM_VIEW_WRAP);
 		}
 	}
 
@@ -1186,8 +1207,11 @@ std::mutex backup_mutex;
 
 bool FileManager::backupCurrentBuffer()
 {
-	Buffer* buffer = _pNotepadPlus->getCurrentBuffer();
-	if (buffer->isLargeFile())
+	if (!_environment)
+		return false;
+
+	Buffer* buffer = _environment->currentBuffer();
+	if (!buffer || buffer->isLargeFile())
 		return false;
 
 	std::lock_guard<std::mutex> lock(backup_mutex);
@@ -1247,10 +1271,11 @@ bool FileManager::backupCurrentBuffer()
 
 			std::wstring fullpathTemp = fullpath;
 			fullpathTemp += L".tmp";
+			npp::core::EditView& editView = _environment->editView();
 			if (UnicodeConvertor.openFile(buffer->isUntitled() ? fullpathTemp.c_str() : fullpath)) // Use temp only for "new #" due to they don't have the original physical existance on the hard drive
 			{
-				size_t lengthDoc = _pNotepadPlus->_pEditView->getCurrentDocLen();
-				char* buf = (char*)_pNotepadPlus->_pEditView->execute(SCI_GETCHARACTERPOINTER);	//to get characters directly from Scintilla buffer
+				size_t lengthDoc = editView.documentLength();
+				char* buf = reinterpret_cast<char*>(editView.sendEditorMessage(SCI_GETCHARACTERPOINTER));	//to get characters directly from Scintilla buffer
 				bool isWrittenSuccessful = false;
 
 				if (encoding == -1) //no special encoding; can be handled directly by Utf8_16_Write
@@ -1320,9 +1345,9 @@ bool FileManager::backupCurrentBuffer()
 		result = true; // no backup file to delete
 	}
 
-	if (result && hasModifForSession)
+	if (result && hasModifForSession && _environment)
 	{
-		_pNotepadPlus->saveCurrentSession();
+		_environment->saveCurrentSession();
 	}
 	return result;
 }
@@ -1617,6 +1642,12 @@ BufferID FileManager::newEmptyDocument()
 BufferID FileManager::newPlaceholderDocument(const wchar_t* missingFilename, int whichOne, const wchar_t* userCreatedSessionName)
 {
 	NppParameters& nppParamInst = NppParameters::getInstance();
+	auto* env = _environment;
+	HWND parentHandle = nullptr;
+	if (env)
+	{
+		parentHandle = reinterpret_cast<HWND>(env->editView().nativeHandle());
+	}
 
 	if (!nppParamInst.theWarningHasBeenGiven())
 	{
@@ -1625,7 +1656,7 @@ BufferID FileManager::newPlaceholderDocument(const wchar_t* missingFilename, int
 		{
 			res = (nppParamInst.getNativeLangSpeaker())->messageBox(
 				"FileInaccessibleUserSession",
-				_pNotepadPlus->_pEditView->getHSelf(),
+				parentHandle,
 				L"Some files from your manually-saved session \"$STR_REPLACE$\" are inaccessible. They can be opened as empty and read-only documents as placeholders.\n\nWould you like to create those placeholders?\n\nNOTE: Choosing not to create the placeholders or closing them later, your manually-saved session will NOT be modified on exit.",
 				L"File inaccessible",
 				MB_YESNO | MB_APPLMODAL,
@@ -1636,7 +1667,7 @@ BufferID FileManager::newPlaceholderDocument(const wchar_t* missingFilename, int
 		{
 			res = (nppParamInst.getNativeLangSpeaker())->messageBox(
 				"FileInaccessibleDefaultSessionXml",
-				_pNotepadPlus->_pEditView->getHSelf(),
+				parentHandle,
 				L"Some files from your past session are inaccessible. They can be opened as empty and read-only documents as placeholders.\n\nWould you like to create those placeholders?\n\nNOTE: Choosing not to create the placeholders or closing them later, your session WILL BE MODIFIED ON EXIT! We suggest you backup your \"session.xml\" now.",
 				L"File inaccessible",
 				MB_YESNO | MB_APPLMODAL);
@@ -1650,7 +1681,8 @@ BufferID FileManager::newPlaceholderDocument(const wchar_t* missingFilename, int
 		return BUFFER_INVALID;
 
 	BufferID buf = MainFileManager.newEmptyDocument();
-	_pNotepadPlus->loadBufferIntoView(buf, whichOne);
+	if (env)
+		env->loadBufferIntoView(buf, whichOne);
 	buf->setFileName(missingFilename);
 	buf->_currentStatus = DOC_INACCESSIBLE;
 	return buf;
@@ -1798,6 +1830,11 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 	
 	NppParameters& nppParam = NppParameters::getInstance();
 	NativeLangSpeaker* pNativeSpeaker = nppParam.getNativeLangSpeaker();
+#ifdef _WIN32
+	HWND ownerWindow = windowHandle(_environment);
+#else
+	void* ownerWindow = windowHandle(_environment);
+#endif
 
 	if (bufferSizeRequested > INT_MAX)
 	{
@@ -1805,7 +1842,7 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 		if (nppParam.archType() == IMAGE_FILE_MACHINE_I386)
 		{
 			pNativeSpeaker->messageBox("FileTooBigToOpen",
-				_pNotepadPlus->_pEditView->getHSelf(),
+				ownerWindow,
 				L"File is too big to be opened by Notepad++",
 				L"File size problem",
 				MB_OK | MB_APPLMODAL);
@@ -1818,7 +1855,7 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 			if (!nppGui._largeFileRestriction._suppress2GBWarning) 
 			{
 				int res = pNativeSpeaker->messageBox("WantToOpenHugeFile",
-					_pNotepadPlus->_pEditView->getHSelf(),
+					ownerWindow,
 					L"Opening a huge file of 2GB+ could take several minutes.\nDo you want to open it?",
 					L"Opening huge file warning",
 					MB_YESNO | MB_APPLMODAL);
@@ -1997,7 +2034,7 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 			case SC_STATUS_BADALLOC:
 			{
 				pNativeSpeaker->messageBox("FileMemoryAllocationFailed",
-					_pNotepadPlus->_pEditView->getHSelf(),
+					ownerWindow,
 					L"There is probably not enough contiguous free memory for the file being loaded by Notepad++.",
 					L"Exception: File memory allocation failed",
 					MB_OK | MB_APPLMODAL);
@@ -2012,7 +2049,7 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 		if (sciStatus != SC_STATUS_BADALLOC)
 		{
 			pNativeSpeaker->messageBox("FileLoadingException",
-				_pNotepadPlus->_pEditView->getHSelf(),
+				ownerWindow,
 				L"An error occurred while loading the file!",
 				L"Exception code: $STR_REPLACE$",
 				MB_OK | MB_APPLMODAL,

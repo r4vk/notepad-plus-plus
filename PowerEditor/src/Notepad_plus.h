@@ -43,10 +43,12 @@
 #include "localization.h"
 #include "documentSnapshot.h"
 #include "md5Dlgs.h"
+#include "Core/DocumentEnvironment.h"
 #include <vector>
 #include <iso646.h>
 #include <chrono>
 #include <atomic>
+#include <memory>
 
 extern std::chrono::steady_clock::time_point g_nppStartTimePoint;
 extern std::chrono::steady_clock::duration g_pluginsLoadingTime;
@@ -151,6 +153,39 @@ class Notepad_plus final
 {
 friend class Notepad_plus_Window;
 friend class FileManager;
+
+private:
+    class DocumentEditViewAdapter final : public npp::core::EditView
+    {
+    public:
+        explicit DocumentEditViewAdapter(Notepad_plus& owner) : _owner(owner) {}
+
+        bool isWrapEnabled() const override;
+        std::size_t documentLength() const override;
+        sptr_t sendEditorMessage(unsigned int msg, uptr_t wParam = 0, sptr_t lParam = 0) override;
+        npp::core::NativeWindowHandle nativeHandle() const override;
+
+    private:
+        Notepad_plus& _owner;
+    };
+
+    class DocumentEnvironmentBridge final : public npp::core::DocumentEnvironment
+    {
+    public:
+        explicit DocumentEnvironmentBridge(Notepad_plus& owner);
+
+        Buffer* currentBuffer() const override;
+        npp::core::EditView& editView() override;
+        const npp::core::EditView& editView() const override;
+        void notifyBufferChanged(Buffer* buffer, int mask) override;
+        void executeCommand(int commandId) override;
+        void saveCurrentSession() override;
+        void loadBufferIntoView(Buffer* buffer, int whichView) override;
+
+    private:
+        Notepad_plus& _owner;
+        DocumentEditViewAdapter _editViewAdapter;
+    };
 
 public:
 	Notepad_plus();
@@ -297,6 +332,7 @@ private:
 	ScintillaEditView _invisibleEditView; // for searches
 	ScintillaEditView _fileEditView;      // for FileManager
     ScintillaEditView* _pEditView = nullptr;
+    std::unique_ptr<DocumentEnvironmentBridge> _documentEnvironment;
 	ScintillaEditView* _pNonEditView = nullptr;
 
     SplitterContainer* _pMainSplitter = nullptr;
