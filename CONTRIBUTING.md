@@ -42,6 +42,35 @@ Opening an issue beforehand allows the administrators and the community to discu
 
 In short: The easier the code review is, the better the chance your pull request will get accepted.
 
+## macOS port contributions
+
+The macOS port introduces additional toolchain and quality requirements. Review the
+[macOS developer environment guide](docs/macos/developer_environment.md) before opening a PR and
+keep the following in mind:
+
+- **Tooling**: Use macOS 13 or newer with Xcode 15.x Command Line Tools, CMake ≥ 3.26, Ninja and Qt
+  6.8. Install dependencies via Homebrew as described in the developer guide and keep new code
+  warning-free under `clang` (`-Wall -Wextra -Werror`).
+- **Project structure**: Cross-platform logic belongs in `npp::platform` or `npp::ui`. Native
+  AppKit/Cocoa code should stay in macOS-specific modules (for example `PowerEditor/macos` or Qt
+  bridge layers); avoid including Cocoa headers in Windows sources. Prefer C++17/20 features,
+  existing abstraction layers, and keep platform shims minimal.
+- **Build & tests**: Validate both configuration and unit tests locally before submitting:
+  ```bash
+  cmake -S . -B build/macos -G Ninja -DNPP_ENABLE_QT_BACKEND=ON
+  cmake --build build/macos
+  ctest --test-dir build/macos --output-on-failure
+  build/macos/tests/unit/npp_ui_tests
+  ```
+  When your change touches shared code paths, also verify the Windows build (CI will enforce it).
+- **UI/UX alignment**: Follow Liquid Glass tokens and guidelines documented in
+  `docs/macos/ui_strategy.md`, `docs/macos/macos_ui_mockups.md`, and the docking/tab strategies.
+  Map keyboard shortcuts to the macOS conventions (`⌘`, `⌥`, `⌃`) via the provided abstraction
+  layers and ensure accessibility metadata is present.
+- **PR hygiene**: Reference an `Accepted` issue, document validation commands in the PR body, and
+  update `docs/macos/` artefacts when behaviour or setup changes. Keep commits scoped and avoid
+  introducing macOS-specific assumptions into Windows-only code.
+
 ### Coding style
 
 ![stay clean](https://notepad-plus-plus.org/assets/images/good-bad-practice.jpg)

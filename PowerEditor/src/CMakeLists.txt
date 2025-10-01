@@ -106,6 +106,7 @@ SET(src_files
                         ./Platform/SystemServices.cpp
                         ./Platform/SystemServices_Windows.cpp
                         ./UI/Factory.cpp
+                        ./UI/DockingLayout.cpp
                         ./UI/ScintillaTheme.cpp
                         ./UI/QtBackend.cpp
 			./WinControls/ContextMenu/ContextMenu.cpp

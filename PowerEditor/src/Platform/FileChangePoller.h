@@ -3,6 +3,7 @@
 #include "Platform/SystemServices.h"
 
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <cstdint>
 
@@ -12,18 +13,20 @@ namespace npp::platform
     {
     public:
         FileChangePoller(std::filesystem::path path, FileWatchEvent events);
+        ~FileChangePoller();
+
+        FileChangePoller(FileChangePoller&&) noexcept;
+        FileChangePoller& operator=(FileChangePoller&&) noexcept;
+
+        FileChangePoller(const FileChangePoller&) = delete;
+        FileChangePoller& operator=(const FileChangePoller&) = delete;
 
         bool detectChanges();
 
-        const std::filesystem::path& path() const noexcept { return path_; }
+        const std::filesystem::path& path() const noexcept;
 
     private:
-        std::filesystem::path path_;
-        bool trackSize_ = false;
-        bool trackLastWrite_ = false;
-        bool previouslyMissing_ = false;
-        bool initialCheck_ = true;
-        std::optional<std::uintmax_t> lastSize_;
-        std::optional<std::filesystem::file_time_type> lastWrite_;
+        class Impl;
+        std::unique_ptr<Impl> impl_;
     };
 }

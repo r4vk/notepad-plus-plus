@@ -66,6 +66,7 @@ add_test(NAME npp_platform_tests COMMAND npp_platform_tests)
 
 add_library(npp_ui STATIC
     ${POWEREDITOR_SRC}/UI/Factory.cpp
+    ${POWEREDITOR_SRC}/UI/DockingLayout.cpp
     ${POWEREDITOR_SRC}/UI/ScintillaTheme.cpp
     ${POWEREDITOR_SRC}/UI/ShortcutNormalization.cpp
 )
@@ -80,6 +81,7 @@ add_executable(npp_ui_tests
     ui/test_ui_factory.cpp
     ui/test_scintilla_theme.cpp
     ui/test_shortcut_normalization.cpp
+    ui/test_docking_layout.cpp
     ui/test_ui_qt_backend.cpp
 )
 

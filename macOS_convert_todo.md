@@ -32,12 +32,12 @@
 - "Zbudować prototyp głównego okna Qt z integracją Scintilli i panelem dokowanym w konwencji Liquid Glass (+)"
 - "Zaprojektować makietę interfejsu macOS uwzględniającą menubar zgodny z HIG, pasek narzędzi NSToolbar, panel preferencji oraz widoki wielodokumentowe (+)"
 - "Dostosować komponent edytora (Scintilla) do renderowania w kontenerze macOS (SCIModule dla Cocoa) wraz z obsługą HiDPI i trybu ciemnego systemowego (+)"
-- "Zaimplementować obsługę skrótów klawiaturowych według standardów macOS (Command/Option) z możliwością mapowania istniejących ustawień"
-- "Przenieść menedżer kart dokumentów na implementację kompatybilną z NSTabView/NSSegmentedControl przy zachowaniu funkcji multi-view"
+- "Zaimplementować obsługę skrótów klawiaturowych według standardów macOS (Command/Option) z możliwością mapowania istniejących ustawień (+)"
+- "Przenieść menedżer kart dokumentów na implementację kompatybilną z NSTabView/NSSegmentedControl przy zachowaniu funkcji multi-view (+)"
 - "Zapewnić wsparcie dla paneli dokowanych (Function List, Project Panel, Document Map) z użyciem NSWindow/NSPanel oraz logiki rozkładu podobnej do Windows"
 
 ## Integracja z funkcjami systemowymi macOS
-- "Opracować mechanizm rejestrowania rozszerzeń plików i obsługi protokołów poprzez LaunchServices"
+- "Opracować mechanizm rejestrowania rozszerzeń plików i obsługi protokołów poprzez LaunchServices (+)"
 - "Przystosować monitoring zmian plików do FSEvents oraz File System Events API"
 - "Dostosować operacje przeciągnij-i-upuść oraz otwieranie wielu dokumentów za pomocą NSDocumentController"
 - "Zaimplementować integrację z usługami udostępniania (Quick Look, Services menu) oraz otwieranie plików z Finder/spotlight"
@@ -66,10 +66,10 @@
 - "Stworzyć testy dla funkcji auto-uzupełniania i listy funkcji (parsowanie, cache, aktualizacja podczas edycji)"
 - "Dodać testy dla warstwy abstrakcji systemowej (np. mocki FileWatcher, Clipboard, Notifications)"
 - "Zaprojektować testy regresyjne dla konwersji kodowań oraz funkcji formatowania tekstu (indentacja, tabulatory, trim)"
-- "Ustanowić automatyczne testy integracyjne otwierające pliki poprzez NSDocumentController (np. przy użyciu XCTest/UIAutomation)"
+- "Ustanowić automatyczne testy integracyjne otwierające pliki poprzez NSDocumentController (np. przy użyciu XCTest/UIAutomation) (+)"
 - "Przygotować skrypty do testów wydajnościowych (czas otwierania plików, zużycie pamięci) porównujących wersję Windows i macOS"
 
 ## Dokumentacja i komunikacja
 - "Zebrać wymagania komunikacyjne (ogłoszenia społeczności, wpisy na blogu, FAQ) i przygotować plan informowania użytkowników o stanie prac"
-- "Aktualizować CONTRIBUTING.md o wytyczne dla deweloperów macOS (style kodowania, wymagane narzędzia, proces PR)"
+- "Aktualizować CONTRIBUTING.md o wytyczne dla deweloperów macOS (style kodowania, wymagane narzędzia, proces PR) (+)"
 - "Przygotować szablony zgłoszeń błędów i feature requestów specyficznych dla macOS"

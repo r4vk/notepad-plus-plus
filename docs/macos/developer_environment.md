@@ -8,6 +8,8 @@
 - **Ninja ≥ 1.11** (`brew install ninja`) – spójny system budowania z konfiguracją CI.
 - **Qt 6.6 LTS** (`brew install qt@6` lub instalator Qt Online) z modułami `qtbase`, `qtdeclarative`, `qttools`, `qtimageformats`.
 - **Python 3.11** (Homebrew) – niezbędny dla skryptów CMake (generacja kodu, testy).
+- **Xcode 15.x** – wymagane do uruchamiania testów integracyjnych (`xcodebuild test`) opartych na
+  XCTest (scenariusze `NSDocumentController`).
 - **Git** (systemowy lub Homebrew) z zaufanym certyfikatem `nppRoot.crt` do podpisywania wydanych plików aktualizacji.
 
 ## Konfiguracja repozytorium
@@ -30,6 +32,9 @@ cmake -S PowerEditor/src -B build/macos-debug \
 
 cmake --build build/macos-debug
 ctest --test-dir build/macos-debug --output-on-failure
+cmake --build tests/integration --config Debug --target NotepadPPMacTests # wygenerowany projekt
+xcodebuild test -project tests/integration/NotepadPPMacTests.xcodeproj \
+               -scheme NotepadPPMacTests -destination 'platform=macOS'
 ```
 
 ## Rekomendowane profile edytora / IDE
