@@ -28,10 +28,10 @@
 - "Zrefaktoryzować istniejące odwołania do rejestru, aby korzystały z `PreferencesStore` (+)"
 
 ## Interfejs użytkownika i doświadczenie użytkownika
-- "Zaprojektować moduł `npp::ui` z interfejsami Qt dla okien, paneli dokowanych i menubarów (Liquid Glass)"
-- "Zbudować prototyp głównego okna Qt z integracją Scintilli i panelem dokowanym w konwencji Liquid Glass"
-- "Zaprojektować makietę interfejsu macOS uwzględniającą menubar zgodny z HIG, pasek narzędzi NSToolbar, panel preferencji oraz widoki wielodokumentowe"
-- "Dostosować komponent edytora (Scintilla) do renderowania w kontenerze macOS (SCIModule dla Cocoa) wraz z obsługą HiDPI i trybu ciemnego systemowego"
+- "Zaprojektować moduł `npp::ui` z interfejsami Qt dla okien, paneli dokowanych i menubarów (Liquid Glass) (+)"
+- "Zbudować prototyp głównego okna Qt z integracją Scintilli i panelem dokowanym w konwencji Liquid Glass (+)"
+- "Zaprojektować makietę interfejsu macOS uwzględniającą menubar zgodny z HIG, pasek narzędzi NSToolbar, panel preferencji oraz widoki wielodokumentowe (+)"
+- "Dostosować komponent edytora (Scintilla) do renderowania w kontenerze macOS (SCIModule dla Cocoa) wraz z obsługą HiDPI i trybu ciemnego systemowego (+)"
 - "Zaimplementować obsługę skrótów klawiaturowych według standardów macOS (Command/Option) z możliwością mapowania istniejących ustawień"
 - "Przenieść menedżer kart dokumentów na implementację kompatybilną z NSTabView/NSSegmentedControl przy zachowaniu funkcji multi-view"
 - "Zapewnić wsparcie dla paneli dokowanych (Function List, Project Panel, Document Map) z użyciem NSWindow/NSPanel oraz logiki rozkładu podobnej do Windows"

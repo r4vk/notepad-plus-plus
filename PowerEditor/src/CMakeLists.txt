@@ -44,6 +44,7 @@ SET(projIncludDir	../../scintilla/include/
                                         ./WinControls/TreeView/
                                         ./WinControls/ToolTip/
                                         ./Platform/
+                                        ./UI/
                                         ./MISC/Exception/
 					./MISC/Common/
 					./TinyXml/tinyXmlA/
@@ -104,6 +105,9 @@ SET(src_files
                         ./Platform/SystemInfo.cpp
                         ./Platform/SystemServices.cpp
                         ./Platform/SystemServices_Windows.cpp
+                        ./UI/Factory.cpp
+                        ./UI/ScintillaTheme.cpp
+                        ./UI/QtBackend.cpp
 			./WinControls/ContextMenu/ContextMenu.cpp
 			./WinControls/OpenSaveFileDialog/CustomFileDialog.cpp
 			./WinControls/PluginsAdmin/pluginsAdmin.cpp

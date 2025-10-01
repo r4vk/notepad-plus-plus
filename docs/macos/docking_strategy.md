@@ -69,6 +69,7 @@ DockingManagerBridge (C++)
 
 ## 9. Następne kroki
 - [ ] Przygotować szkic `DockingManagerBridge.h` z neutralnymi strukturami.
+- [x] Zdefiniować neutralny format layoutu (`UI/DockingLayout.h`) oraz serializację snapshotów, aby współdzielić konfiguracje między Windows i macOS.
 - [ ] Zaimplementować prototyp DockingHost w Qt (w folderze `PowerEditor/macos`).
 - [ ] Zmodyfikować `NppParameters::load` tak, aby odczytywał layout z `PreferencesStore` (not. gui.docking).
 - [ ] Opracować checklistę testów UI (przeciąganie paneli, floating, reset layout).
