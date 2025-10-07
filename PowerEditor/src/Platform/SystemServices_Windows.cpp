@@ -3,15 +3,24 @@
 #include "Platform/SystemServices.h"
 
 #include "WinControls/ReadDirectoryChanges/ReadDirectoryChanges.h"
+#include "WinControls/TrayIcon/trayIconControler.h"
+#include "ScintillaComponent/Printer.h"
 
 #include <windows.h>
+#include <shellapi.h>
 
+#include <cwchar>
+#include <cstddef>
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
+#include <utility>
+
+#include "resource.h"
 
 namespace npp::platform
 {
@@ -152,6 +161,252 @@ namespace npp::platform
                 const LONG status = ::RegSetValueExW(handle, key.c_str(), 0, type, data, size);
                 ::RegCloseKey(handle);
                 return status == ERROR_SUCCESS;
+            }
+        };
+
+        class WindowsNotificationService final : public NotificationService
+        {
+        public:
+            WindowsNotificationService()
+            {
+                registerWindowClass();
+                createHostWindow();
+                initializeIconData();
+            }
+
+            ~WindowsNotificationService() override
+            {
+                if (iconActive_)
+                {
+                    ::Shell_NotifyIconW(NIM_DELETE, &iconData_);
+                }
+
+                if (window_)
+                {
+                    ::DestroyWindow(window_);
+                }
+            }
+
+            bool post(const NotificationRequest& request) override
+            {
+                if (!ensureIcon())
+                {
+                    return false;
+                }
+
+                configureBalloon(request);
+                return ::Shell_NotifyIconW(NIM_MODIFY, &iconData_) == TRUE;
+            }
+
+            bool withdraw(const std::wstring& identifier) override
+            {
+                (void)identifier;
+                return false;
+            }
+
+        private:
+            static constexpr const wchar_t* kWindowClassName = L"NotepadPlusPlus.NotificationHost";
+
+            static LRESULT CALLBACK HostWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+            {
+                if (msg == WM_DESTROY)
+                {
+                    return 0;
+                }
+
+                return ::DefWindowProcW(hwnd, msg, wParam, lParam);
+            }
+
+            void registerWindowClass()
+            {
+                WNDCLASSEXW cls{};
+                cls.cbSize = sizeof(WNDCLASSEXW);
+                cls.lpfnWndProc = &HostWndProc;
+                cls.hInstance = ::GetModuleHandleW(nullptr);
+                cls.lpszClassName = kWindowClassName;
+                cls.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
+                ::RegisterClassExW(&cls);
+            }
+
+            void createHostWindow()
+            {
+                window_ = ::CreateWindowExW(WS_EX_TOOLWINDOW, kWindowClassName, L"Notepad++ Notifications", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, ::GetModuleHandleW(nullptr), nullptr);
+            }
+
+            void initializeIconData()
+            {
+                iconData_.cbSize = sizeof(NOTIFYICONDATAW);
+                iconData_.hWnd = window_;
+                iconData_.uID = 1u;
+                iconData_.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+                iconData_.uCallbackMessage = WM_APP + 98;
+                iconData_.hIcon = ::LoadIconW(::GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_M30ICON));
+                copyTruncated(iconData_.szTip, ARRAYSIZE(iconData_.szTip), L"Notepad++");
+            }
+
+            bool ensureIcon()
+            {
+                if (!window_)
+                {
+                    return false;
+                }
+
+                if (!iconActive_)
+                {
+                    iconActive_ = ::Shell_NotifyIconW(NIM_ADD, &iconData_) == TRUE;
+                    if (iconActive_)
+                    {
+                        iconData_.uVersion = NOTIFYICON_VERSION_4;
+                        ::Shell_NotifyIconW(NIM_SETVERSION, &iconData_);
+                    }
+                }
+
+                return iconActive_;
+            }
+
+            static void copyTruncated(wchar_t* destination, size_t capacity, const std::wstring& value)
+            {
+                if (!destination || capacity == 0)
+                {
+                    return;
+                }
+
+                const size_t length = std::min(value.size(), capacity - 1u);
+                if (length > 0)
+                {
+                    std::wmemcpy(destination, value.c_str(), length);
+                }
+
+                destination[length] = L'\0';
+            }
+
+            void configureBalloon(const NotificationRequest& request)
+            {
+                iconData_.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_INFO;
+                copyTruncated(iconData_.szTip, ARRAYSIZE(iconData_.szTip), request.title.empty() ? L"Notepad++" : request.title);
+                copyTruncated(iconData_.szInfoTitle, ARRAYSIZE(iconData_.szInfoTitle), request.title.empty() ? L"Notepad++" : request.title);
+                copyTruncated(iconData_.szInfo, ARRAYSIZE(iconData_.szInfo), request.body);
+
+                switch (request.urgency)
+                {
+                    case NotificationUrgency::Warning:
+                        iconData_.dwInfoFlags = NIIF_WARNING;
+                        break;
+                    case NotificationUrgency::Error:
+                        iconData_.dwInfoFlags = NIIF_ERROR;
+                        break;
+                    default:
+                        iconData_.dwInfoFlags = NIIF_INFO;
+                        break;
+                }
+
+                if (request.dismissAfter.has_value())
+                {
+                    const auto clamped = std::clamp(*request.dismissAfter, std::chrono::milliseconds{1000}, std::chrono::milliseconds{60000});
+                    iconData_.uTimeout = static_cast<UINT>(clamped.count());
+                }
+                else
+                {
+                    iconData_.uTimeout = 10000u;
+                }
+
+                if (!request.playSound)
+                {
+                    iconData_.dwInfoFlags |= NIIF_NOSOUND;
+                }
+                else
+                {
+                    iconData_.dwInfoFlags &= ~NIIF_NOSOUND;
+                }
+            }
+
+            HWND window_ = nullptr;
+            NOTIFYICONDATAW iconData_{};
+            bool iconActive_ = false;
+        };
+
+        class WindowsStatusItem final : public StatusItem
+        {
+        public:
+            explicit WindowsStatusItem(StatusItemDescriptor descriptor)
+                : descriptor_(std::move(descriptor))
+            {
+            }
+
+            ~WindowsStatusItem() override
+            {
+                hide();
+            }
+
+            bool show() override
+            {
+                if (!ensureController())
+                {
+                    return false;
+                }
+
+                if (controller_->isInTray())
+                {
+                    return true;
+                }
+
+                return controller_->doTrayIcon(NIM_ADD) == 0;
+            }
+
+            bool hide() override
+            {
+                if (!controller_ || !controller_->isInTray())
+                {
+                    return false;
+                }
+
+                return controller_->doTrayIcon(NIM_DELETE) == 0;
+            }
+
+            bool isVisible() const override
+            {
+                return controller_ && controller_->isInTray();
+            }
+
+            bool reinstall() override
+            {
+                if (!controller_ || !controller_->isInTray())
+                {
+                    return false;
+                }
+
+                return controller_->reAddTrayIcon() == 0;
+            }
+
+        private:
+            bool ensureController()
+            {
+                if (controller_)
+                {
+                    return true;
+                }
+
+                auto owner = reinterpret_cast<HWND>(descriptor_.windows.owner);
+                auto icon = reinterpret_cast<HICON>(descriptor_.windows.icon);
+                if (!owner || !icon || descriptor_.windows.callbackMessage == 0u)
+                {
+                    return false;
+                }
+
+                controller_ = std::make_unique<trayIconControler>(owner, static_cast<UINT>(descriptor_.windows.iconId), static_cast<UINT>(descriptor_.windows.callbackMessage), icon, descriptor_.tooltip.c_str());
+                return controller_ != nullptr;
+            }
+
+            StatusItemDescriptor descriptor_;
+            std::unique_ptr<trayIconControler> controller_;
+        };
+
+        class WindowsStatusItemService final : public StatusItemService
+        {
+        public:
+            std::unique_ptr<StatusItem> create(const StatusItemDescriptor& descriptor) override
+            {
+                return std::make_unique<WindowsStatusItem>(descriptor);
             }
         };
 
@@ -377,6 +632,36 @@ namespace npp::platform
             CReadDirectoryChanges changes_;
         };
 
+        class WindowsPrintService final : public PrintService
+        {
+        public:
+            bool printDocument(const PrintDocumentRequest& request) override
+            {
+                if (!request.windows.instance || !request.windows.owner || !request.windows.editView)
+                {
+                    return false;
+                }
+
+                auto* view = reinterpret_cast<ScintillaEditView*>(request.windows.editView);
+                if (!view)
+                {
+                    return false;
+                }
+
+                Printer printer;
+                printer.init(static_cast<HINSTANCE>(request.windows.instance),
+                             static_cast<HWND>(request.windows.owner),
+                             view,
+                             request.showPrintDialog,
+                             request.selectionStart,
+                             request.selectionEnd,
+                             request.isRightToLeft);
+
+                const std::size_t printed = printer.doPrint();
+                return printed > 0u;
+            }
+        };
+
         class WindowsSystemServices final : public SystemServices
         {
         public:
@@ -405,11 +690,29 @@ namespace npp::platform
                 return sharingQueue_;
             }
 
+            NotificationService& notifications() override
+            {
+                return notifications_;
+            }
+
+            StatusItemService& statusItems() override
+            {
+                return statusItems_;
+            }
+
+            PrintService& printing() override
+            {
+                return printing_;
+            }
+
         private:
             WindowsClipboardService clipboard_;
             WindowsPreferencesStore preferences_;
             DocumentOpenQueue documentQueue_;
             SharingCommandQueue sharingQueue_;
+            WindowsNotificationService notifications_;
+            WindowsStatusItemService statusItems_;
+            WindowsPrintService printing_;
         };
     }
 

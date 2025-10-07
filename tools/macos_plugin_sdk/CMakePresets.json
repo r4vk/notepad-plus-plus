@@ -1,0 +1,43 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "ninja-release",
+      "displayName": "Ninja Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ninja-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "xcode-universal",
+      "displayName": "Xcode Universal",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build/xcode-universal",
+      "toolset": {
+        "value": "default"
+      },
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64;x86_64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "11.0"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-ninja-release",
+      "configurePreset": "ninja-release"
+    },
+    {
+      "name": "build-xcode-universal",
+      "configurePreset": "xcode-universal"
+    }
+  ],
+  "testPresets": []
+}

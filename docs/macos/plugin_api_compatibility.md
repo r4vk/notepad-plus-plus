@@ -53,7 +53,7 @@ macOS Plugin Host
 - **Kodowanie ścieżek** – wszystkie ścieżki przekazywane do wtyczek powinny być UTF-8 (na macOS). Konieczne jest oznaczenie w dokumentacji.
 
 ## 7. Następne kroki operacyjne
-- [ ] Utworzyć nagłówek `include/notepad_plus_msgs_portable.h` z neutralnymi typami i aliasami.
+- [x] Utworzyć nagłówek `include/notepad_plus_msgs_portable.h` z neutralnymi typami i aliasami. → dostarczono w SDK jako `include/npp/NotepadPlusMsgs.h` wraz z aliasami macOS.
 - [ ] Przygotować prototyp `MessageBridge` z obsługą 10 najczęściej używanych komunikatów (wg statystyk pluginów).
-- [ ] Zaimplementować przykład wtyczki działającej na macOS (ładującej Scintillę i menu).
+- [x] Zaimplementować przykład wtyczki działającej na macOS (ładującej Scintillę i menu). → `HelloMacPlugin` rejestruje komendę menu i demonstruje integrację status bara.
 - [ ] Dodać test integracyjny (ładowanie wtyczki `NppExport`) w pipeline macOS.

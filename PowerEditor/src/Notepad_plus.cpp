@@ -20,7 +20,6 @@
 #include "Notepad_plus.h"
 #include "Notepad_plus_Window.h"
 #include "CustomFileDialog.h"
-#include "Printer.h"
 #include "FileNameStringSplitter.h"
 #include "lesDlgs.h"
 #include "Utf8_16.h"
@@ -42,6 +41,8 @@
 #include "NppDarkMode.h"
 #include "Platform/FileSystem.h"
 #include "Platform/PathProvider.h"
+#include "Platform/SystemServices.h"
+#include "resource.h"
 
 using namespace std;
 
@@ -256,16 +257,69 @@ Notepad_plus::~Notepad_plus()
 
 	(NppParameters::getInstance()).destroyInstance();
 
-	delete _pTrayIco;
-	delete _pAnsiCharPanel;
-	delete _pClipboardHistoryPanel;
+        _statusItem.reset();
+        delete _pAnsiCharPanel;
+        delete _pClipboardHistoryPanel;
 	delete _pDocumentListPanel;
 	delete _pProjectPanel_1;
 	delete _pProjectPanel_2;
 	delete _pProjectPanel_3;
 	delete _pDocMap;
 	delete _pFuncList;
-	delete _pFileBrowser;
+        delete _pFileBrowser;
+}
+
+
+bool Notepad_plus::ensureStatusItem(HWND owner, HICON icon)
+{
+        if (_statusItem)
+                return true;
+
+        if (!icon)
+                return false;
+
+        npp::platform::StatusItemDescriptor descriptor{};
+        descriptor.identifier = L"org.notepad-plus-plus.statusitem";
+        descriptor.tooltip = L"Notepad++";
+#ifdef _WIN32
+        descriptor.windows.owner = owner;
+        descriptor.windows.iconId = IDI_M30ICON;
+        descriptor.windows.callbackMessage = NPPM_INTERNAL_MINIMIZED_TRAY;
+        descriptor.windows.icon = icon;
+#endif
+
+        auto& service = npp::platform::SystemServices::instance().statusItems();
+        auto item = service.create(descriptor);
+        if (!item)
+                return false;
+
+        _statusItem = std::move(item);
+        return true;
+}
+
+void Notepad_plus::showStatusItem()
+{
+        if (_statusItem)
+                _statusItem->show();
+}
+
+void Notepad_plus::hideStatusItem()
+{
+        if (_statusItem)
+                _statusItem->hide();
+}
+
+bool Notepad_plus::statusItemVisible() const
+{
+        return _statusItem && _statusItem->isVisible();
+}
+
+bool Notepad_plus::reinstallStatusItem()
+{
+        if (!_statusItem)
+                return false;
+
+        return _statusItem->reinstall();
 }
 
 
@@ -519,12 +573,13 @@ LRESULT Notepad_plus::init(HWND hwnd)
 
 	_dockingManager.init(_pPublicInterface->getHinst(), hwnd, &_pMainWindow);
 
-	if (nppGUI._isMinimizedToTray != sta_none && _pTrayIco == nullptr)
-	{
-		HICON icon = nullptr;
-		Notepad_plus_Window::loadTrayIcon(_pPublicInterface->getHinst(), &icon);
-		_pTrayIco = new trayIconControler(hwnd, IDI_M30ICON, NPPM_INTERNAL_MINIMIZED_TRAY, icon, L"");
-	}
+        if (nppGUI._isMinimizedToTray != sta_none && !_statusItem)
+        {
+                HICON icon = nullptr;
+                Notepad_plus_Window::loadTrayIcon(_pPublicInterface->getHinst(), &icon);
+                if (!ensureStatusItem(hwnd, icon) && icon)
+                        ::DestroyIcon(icon);
+        }
 
 	checkSyncState();
 
@@ -2459,13 +2514,28 @@ bool Notepad_plus::findInCurrentFile(bool isEntireDoc)
 
 void Notepad_plus::filePrint(bool showDialog)
 {
-	Printer printer;
+        auto& services = npp::platform::SystemServices::instance();
+        auto& printService = services.printing();
 
-	intptr_t startPos = _pEditView->execute(SCI_GETSELECTIONSTART);
-	intptr_t endPos = _pEditView->execute(SCI_GETSELECTIONEND);
+        npp::platform::PrintDocumentRequest request{};
+        request.showPrintDialog = showDialog;
+        request.selectionStart = static_cast<std::size_t>(_pEditView->execute(SCI_GETSELECTIONSTART));
+        request.selectionEnd = static_cast<std::size_t>(_pEditView->execute(SCI_GETSELECTIONEND));
+        request.printSelectionOnly = request.selectionStart != request.selectionEnd;
+        request.isRightToLeft = _nativeLangSpeaker.isRTL();
 
-	printer.init(_pPublicInterface->getHinst(), _pPublicInterface->getHSelf(), _pEditView, showDialog, startPos, endPos, _nativeLangSpeaker.isRTL());
-	printer.doPrint();
+        if (auto* buffer = _pEditView ? _pEditView->getCurrentBuffer() : nullptr)
+        {
+                request.jobTitle = buffer->getFullPathName();
+        }
+
+#ifdef _WIN32
+        request.windows.instance = _pPublicInterface->getHinst();
+        request.windows.owner = _pPublicInterface->getHSelf();
+        request.windows.editView = _pEditView;
+#endif
+
+        printService.printDocument(request);
 }
 
 int Notepad_plus::doSaveOrNot(const wchar_t* fn, bool isMulti)

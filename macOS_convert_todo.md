@@ -41,12 +41,12 @@
 - "Przystosować monitoring zmian plików do FSEvents oraz File System Events API (+) — wdrożono strażnika FSEvents w SystemServices z filtrowaniem subkatalogów"
 - "Dostosować operacje przeciągnij-i-upuść oraz otwieranie wielu dokumentów za pomocą NSDocumentController" — przygotowano kolejkę `DocumentOpenQueue` w `SystemServices` z obsługą wielu ścieżek i testami jednostkowymi, aby umożliwić integrację z NSDocumentController i ujednolicić przetwarzanie żądań otwarcia
 - "Zaimplementować integrację z usługami udostępniania (Quick Look, Services menu) oraz otwieranie plików z Finder/spotlight (+) — dodano kolejkę `SharingCommandQueue` w `SystemServices` wraz z testami i obsługą w override, aby przekazywać żądania Quick Look/Services do warstwy UI"
-- "Przygotować obsługę drukowania i podglądu wydruku w oparciu o NSPrintOperation"
-- "Zaadaptować system powiadomień (toastów) do Notification Center"
-- "Zastąpić funkcje związane z paskiem zadań i ikoną w zasobniku odpowiednikami w Dock i menu statusowym"
+- "Przygotować obsługę drukowania i podglądu wydruku w oparciu o NSPrintOperation (+) — dodano usługę `PrintService` w `SystemServices` z implementacją Windows korzystającą z istniejącego `Printer`, refaktoryzowano `Notepad_plus::filePrint` do korzystania z nowej abstrakcji i przygotowano stubbing na macOS/testach"
+- "Zaadaptować system powiadomień (toastów) do Notification Center (+)"
+- "Zastąpić funkcje związane z paskiem zadań i ikoną w zasobniku odpowiednikami w Dock i menu statusowym (+) — dodano `StatusItemService` w `SystemServices` wraz z implementacją Windows/stubem testowym oraz zrefaktoryzowano kod Notepad++ do korzystania z abstrakcji, przygotowując integrację z Dock/NSStatusItem"
 
 ## Architektura wtyczek i rozszerzeń
-- "Przygotować SDK wtyczek dla macOS (nagłówki, przykładowe projekty Xcode/CMake, dokumentacja budowy)"
+- "Przygotować SDK wtyczek dla macOS (nagłówki, przykładowe projekty Xcode/CMake, dokumentacja budowy) (+) — dodano pakiet `tools/macos_plugin_sdk` z przenośnymi nagłówkami, presetami CMake/Xcode i przykładową wtyczką HelloMac"
 
 ## Dystrybucja, bezpieczeństwo i utrzymanie
 - "Zaprojektować strukturę pakietu .app (Info.plist, zasoby, ikonografia) oraz proces budowy DMG instalacyjnego"

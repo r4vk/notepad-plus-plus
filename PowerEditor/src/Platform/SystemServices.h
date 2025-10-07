@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -98,6 +100,111 @@ namespace npp::platform
         virtual std::optional<std::wstring> getText() = 0;
     };
 
+    enum class NotificationUrgency
+    {
+        Information,
+        Warning,
+        Error,
+    };
+
+    struct NotificationRequest
+    {
+        std::wstring identifier;
+        std::wstring title;
+        std::wstring subtitle;
+        std::wstring body;
+        NotificationUrgency urgency = NotificationUrgency::Information;
+        bool playSound = false;
+        std::optional<std::chrono::milliseconds> dismissAfter;
+    };
+
+    class NotificationService
+    {
+    public:
+        virtual ~NotificationService() = default;
+
+        virtual bool post(const NotificationRequest& request) = 0;
+
+        virtual bool withdraw(const std::wstring& identifier)
+        {
+            (void)identifier;
+            return false;
+        }
+    };
+
+    struct PrintDocumentRequest
+    {
+        std::wstring jobTitle;
+        bool showPrintDialog = true;
+        bool printSelectionOnly = false;
+        std::size_t selectionStart = 0u;
+        std::size_t selectionEnd = 0u;
+        bool isRightToLeft = false;
+
+#ifdef _WIN32
+        struct WindowsContext
+        {
+            void* instance = nullptr;
+            void* owner = nullptr;
+            void* editView = nullptr;
+        } windows;
+#endif
+    };
+
+    class PrintService
+    {
+    public:
+        virtual ~PrintService() = default;
+
+        virtual bool printDocument(const PrintDocumentRequest& request) = 0;
+    };
+
+    struct StatusItemDescriptor
+    {
+        std::wstring identifier;
+        std::wstring tooltip;
+#ifdef _WIN32
+        struct WindowsOptions
+        {
+            void* owner = nullptr;
+            std::uint32_t iconId = 0u;
+            std::uint32_t callbackMessage = 0u;
+            void* icon = nullptr;
+        } windows;
+#endif
+    };
+
+    class StatusItem
+    {
+    public:
+        virtual ~StatusItem() = default;
+
+        virtual bool show() = 0;
+
+        virtual bool hide() = 0;
+
+        virtual bool isVisible() const = 0;
+
+        virtual bool reinstall()
+        {
+            return false;
+        }
+
+        virtual bool updateTooltip(const std::wstring& tooltip)
+        {
+            (void)tooltip;
+            return false;
+        }
+    };
+
+    class StatusItemService
+    {
+    public:
+        virtual ~StatusItemService() = default;
+
+        virtual std::unique_ptr<StatusItem> create(const StatusItemDescriptor& descriptor) = 0;
+    };
+
     class FileWatcher
     {
     public:
@@ -126,6 +233,12 @@ namespace npp::platform
         virtual DocumentOpenQueue& documentOpenQueue() = 0;
 
         virtual SharingCommandQueue& sharingCommands() = 0;
+
+        virtual NotificationService& notifications() = 0;
+
+        virtual StatusItemService& statusItems() = 0;
+
+        virtual PrintService& printing() = 0;
 
         static SystemServices& instance();
     };

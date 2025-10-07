@@ -2798,8 +2798,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				scnN.nmhdr.code = NPPN_BEFORESHUTDOWN;
 				_pluginsManager.notify(&scnN);
 
-				if (_pTrayIco)
-					_pTrayIco->doTrayIcon(REMOVE);
+                                hideStatusItem();
 
 				const NppGUI & nppgui = nppParam.getNppGUI();
 
@@ -2959,7 +2958,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		case NPPM_INTERNAL_RESTOREFROMTRAY:
 		{
 			// When mono instance, bring this one to front
-			if (_pTrayIco != nullptr && _pTrayIco->isInTray())
+                        if (statusItemVisible())
 			{
 				// We are in tray, restore properly..
 				::SendMessage(hwnd, NPPM_INTERNAL_MINIMIZED_TRAY, 0, WM_LBUTTONUP);
@@ -2976,14 +2975,15 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				((toTray == sta_close || toTray == sta_minimize_close) && wParam == SC_CLOSE)
 			)
 			{
-				if (!_pTrayIco)
-				{
-					HICON icon = nullptr;
-					Notepad_plus_Window::loadTrayIcon(_pPublicInterface->getHinst(), &icon);
-					_pTrayIco = new trayIconControler(hwnd, IDI_M30ICON, NPPM_INTERNAL_MINIMIZED_TRAY, icon, L"");
-				}
+                                if (!_statusItem)
+                                {
+                                        HICON icon = nullptr;
+                                        Notepad_plus_Window::loadTrayIcon(_pPublicInterface->getHinst(), &icon);
+                                        if (!ensureStatusItem(hwnd, icon) && icon)
+                                                ::DestroyIcon(icon);
+                                }
 
-				_pTrayIco->doTrayIcon(ADD);
+                                showStatusItem();
 				_dockingManager.showFloatingContainers(false);
 				minimizeDialogs();
 				::ShowWindow(hwnd, SW_HIDE);
@@ -3031,8 +3031,8 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 					_dockingManager.showFloatingContainers(true);
 					restoreMinimizeDialogs();
 
-					if (!_pPublicInterface->isPrelaunch())
-						_pTrayIco->doTrayIcon(REMOVE);
+                                        if (!_pPublicInterface->isPrelaunch())
+                                                hideStatusItem();
 					::SendMessage(hwnd, WM_SIZE, 0, 0);
 					return TRUE;
 				}
@@ -4401,15 +4401,11 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				return TRUE;
 			}
 
-			else if (message == WM_TASKBARCREATED)
-			{
-				if (!_pTrayIco)
-					return TRUE;
-
-				// re-add tray icon
-				_pTrayIco->reAddTrayIcon();
-				return TRUE;
-			}
+                        else if (message == WM_TASKBARCREATED)
+                        {
+                                reinstallStatusItem();
+                                return TRUE;
+                        }
 
 			return ::DefWindowProc(hwnd, message, wParam, lParam);
 		}
