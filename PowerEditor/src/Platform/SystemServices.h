@@ -6,6 +6,8 @@
 #include <optional>
 #include <string>
 
+#include "Platform/DocumentOpenQueue.h"
+
 namespace npp::platform
 {
     class PreferencesStore
@@ -119,6 +121,8 @@ namespace npp::platform
         virtual std::unique_ptr<FileWatcher> createFileWatcher() = 0;
 
         virtual PreferencesStore& preferences() = 0;
+
+        virtual DocumentOpenQueue& documentOpenQueue() = 0;
 
         static SystemServices& instance();
     };

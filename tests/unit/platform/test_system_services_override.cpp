@@ -210,11 +210,17 @@ namespace
             return preferences_;
         }
 
+        npp::platform::DocumentOpenQueue& documentOpenQueue() override
+        {
+            return documentQueue_;
+        }
+
         std::function<std::unique_ptr<npp::platform::FileWatcher>()> fileWatcherFactory;
 
     private:
         FakeClipboard clipboard_;
         FakePreferences preferences_;
+        npp::platform::DocumentOpenQueue documentQueue_;
     };
 }
 
@@ -271,6 +277,17 @@ TEST_CASE("system services override injects clipboard and file watcher mocks", "
         const auto remembered = preferences.getBoolean(L"tests", L"remember");
         REQUIRE(remembered.has_value());
         CHECK(*remembered);
+
+        auto& openQueue = services.documentOpenQueue();
+        npp::platform::DocumentOpenRequest request{};
+        request.paths = {observedPath / "queued.txt"};
+        request.source = npp::platform::DocumentOpenSource::DragAndDrop;
+        openQueue.enqueue(request);
+        const auto queued = openQueue.poll();
+        REQUIRE(queued.has_value());
+        CHECK(queued->paths.size() == 1);
+        CHECK(queued->paths.front() == observedPath / "queued.txt");
+        CHECK(queued->source == npp::platform::DocumentOpenSource::DragAndDrop);
     }
 
     auto& fallbackServices = npp::platform::SystemServices::instance();
@@ -281,4 +298,5 @@ TEST_CASE("system services override injects clipboard and file watcher mocks", "
 #else
     CHECK_FALSE(fallbackWatcher->watch(std::filesystem::path{"/tmp"}, FileWatchEvent::FileName));
 #endif
+    CHECK(fallbackServices.documentOpenQueue().empty());
 }

@@ -535,9 +535,15 @@ namespace npp::platform
                 return preferences_;
             }
 
+            DocumentOpenQueue& documentOpenQueue() override
+            {
+                return documentQueue_;
+            }
+
         private:
             StubClipboardService clipboard_;
             StubPreferencesStore preferences_;
+            DocumentOpenQueue documentQueue_;
         };
 
 #ifdef _WIN32
@@ -561,9 +567,15 @@ namespace npp::platform
                 return preferences_;
             }
 
+            DocumentOpenQueue& documentOpenQueue() override
+            {
+                return documentQueue_;
+            }
+
         private:
             StubClipboardService clipboard_;
             StubPreferencesStore preferences_;
+            DocumentOpenQueue documentQueue_;
         };
 #endif
 

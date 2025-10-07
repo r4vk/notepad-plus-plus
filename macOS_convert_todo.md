@@ -39,7 +39,7 @@
 ## Integracja z funkcjami systemowymi macOS
 - "Opracować mechanizm rejestrowania rozszerzeń plików i obsługi protokołów poprzez LaunchServices (+)"
 - "Przystosować monitoring zmian plików do FSEvents oraz File System Events API (+) — wdrożono strażnika FSEvents w SystemServices z filtrowaniem subkatalogów"
-- "Dostosować operacje przeciągnij-i-upuść oraz otwieranie wielu dokumentów za pomocą NSDocumentController"
+- "Dostosować operacje przeciągnij-i-upuść oraz otwieranie wielu dokumentów za pomocą NSDocumentController" — przygotowano kolejkę `DocumentOpenQueue` w `SystemServices` z obsługą wielu ścieżek i testami jednostkowymi, aby umożliwić integrację z NSDocumentController i ujednolicić przetwarzanie żądań otwarcia
 - "Zaimplementować integrację z usługami udostępniania (Quick Look, Services menu) oraz otwieranie plików z Finder/spotlight"
 - "Przygotować obsługę drukowania i podglądu wydruku w oparciu o NSPrintOperation"
 - "Zaadaptować system powiadomień (toastów) do Notification Center"
