@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <utility>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -196,6 +197,46 @@ namespace npp::platform
         private:
             std::mutex mutex_;
             std::vector<NotificationRequest> delivered_;
+        };
+
+        class StubStatusItem final : public StatusItem
+        {
+        public:
+            explicit StubStatusItem(StatusItemDescriptor descriptor)
+                : descriptor_(std::move(descriptor))
+            {
+            }
+
+            bool show() override
+            {
+                visible_ = true;
+                return true;
+            }
+
+            bool hide() override
+            {
+                const bool wasVisible = visible_;
+                visible_ = false;
+                return wasVisible;
+            }
+
+            bool isVisible() const override
+            {
+                return visible_;
+            }
+
+        private:
+            StatusItemDescriptor descriptor_;
+            bool visible_ = false;
+        };
+
+        class StubStatusItemService final : public StatusItemService
+        {
+        public:
+            std::unique_ptr<StatusItem> create(const StatusItemDescriptor& descriptor) override
+            {
+                return std::make_unique<StubStatusItem>(descriptor);
+            }
         };
 
         class StubFileWatcher final : public FileWatcher
@@ -830,12 +871,18 @@ namespace npp::platform
                 return notifications_;
             }
 
+            StatusItemService& statusItems() override
+            {
+                return statusItems_;
+            }
+
         private:
             StubClipboardService clipboard_;
             StubPreferencesStore preferences_;
             DocumentOpenQueue documentQueue_;
             SharingCommandQueue sharingQueue_;
             StubNotificationService notifications_;
+            StubStatusItemService statusItems_;
         };
 
 #ifdef _WIN32
@@ -874,12 +921,18 @@ namespace npp::platform
                 return notifications_;
             }
 
+            StatusItemService& statusItems() override
+            {
+                return statusItems_;
+            }
+
         private:
             StubClipboardService clipboard_;
             StubPreferencesStore preferences_;
             DocumentOpenQueue documentQueue_;
             SharingCommandQueue sharingQueue_;
             MacNotificationService notifications_;
+            StubStatusItemService statusItems_;
         };
 #endif
 

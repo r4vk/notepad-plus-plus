@@ -43,7 +43,7 @@
 - "Zaimplementować integrację z usługami udostępniania (Quick Look, Services menu) oraz otwieranie plików z Finder/spotlight (+) — dodano kolejkę `SharingCommandQueue` w `SystemServices` wraz z testami i obsługą w override, aby przekazywać żądania Quick Look/Services do warstwy UI"
 - "Przygotować obsługę drukowania i podglądu wydruku w oparciu o NSPrintOperation"
 - "Zaadaptować system powiadomień (toastów) do Notification Center (+)"
-- "Zastąpić funkcje związane z paskiem zadań i ikoną w zasobniku odpowiednikami w Dock i menu statusowym"
+- "Zastąpić funkcje związane z paskiem zadań i ikoną w zasobniku odpowiednikami w Dock i menu statusowym (+) — dodano `StatusItemService` w `SystemServices` wraz z implementacją Windows/stubem testowym oraz zrefaktoryzowano kod Notepad++ do korzystania z abstrakcji, przygotowując integrację z Dock/NSStatusItem"
 
 ## Architektura wtyczek i rozszerzeń
 - "Przygotować SDK wtyczek dla macOS (nagłówki, przykładowe projekty Xcode/CMake, dokumentacja budowy)"

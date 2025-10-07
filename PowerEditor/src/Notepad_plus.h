@@ -28,7 +28,6 @@
 #include "FindCharsInRange.h"
 #include "columnEditor.h"
 #include "WordStyleDlg.h"
-#include "trayIconControler.h"
 #include "PluginsManager.h"
 #include "preferenceDlg.h"
 #include "WindowsDlg.h"
@@ -49,6 +48,11 @@
 #include <chrono>
 #include <atomic>
 #include <memory>
+
+namespace npp::platform
+{
+        class StatusItem;
+}
 
 extern std::chrono::steady_clock::time_point g_nppStartTimePoint;
 extern std::chrono::steady_clock::duration g_pluginsLoadingTime;
@@ -420,9 +424,14 @@ private:
 	}
 	_syncInfo;
 
-	bool _isUDDocked = false;
+        bool _isUDDocked = false;
 
-	trayIconControler* _pTrayIco = nullptr;
+        std::unique_ptr<npp::platform::StatusItem> _statusItem;
+        bool ensureStatusItem(HWND owner, HICON icon);
+        void showStatusItem();
+        void hideStatusItem();
+        bool statusItemVisible() const;
+        bool reinstallStatusItem();
 	intptr_t _zoomOriginalValue = 0;
 
 	Accelerator _accelerator;

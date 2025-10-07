@@ -195,13 +195,19 @@ void Notepad_plus_Window::init(HINSTANCE hInst, HWND parent, const wchar_t *cmdL
 		else
 			::ShowWindow(_hSelf, nppGUI._isMaximized ? SW_MAXIMIZE : SW_SHOW);
 	}
-	else
-	{
-		HICON icon = nullptr;
-		loadTrayIcon(_hInst, &icon);
-		_notepad_plus_plus_core._pTrayIco = new trayIconControler(_hSelf, IDI_M30ICON, NPPM_INTERNAL_MINIMIZED_TRAY, icon, L"");
-		_notepad_plus_plus_core._pTrayIco->doTrayIcon(ADD);
-	}
+        else
+        {
+                HICON icon = nullptr;
+                loadTrayIcon(_hInst, &icon);
+                if (_notepad_plus_plus_core.ensureStatusItem(_hSelf, icon))
+                {
+                        _notepad_plus_plus_core.showStatusItem();
+                }
+                else if (icon)
+                {
+                        ::DestroyIcon(icon);
+                }
+        }
 
 	if(cmdLineParams->isPointValid() && NppDarkMode::isEnabled())
 		setStartupBgColor(NppDarkMode::getDlgBackgroundColor()); //draw dark background when opening Npp through cmd with position data

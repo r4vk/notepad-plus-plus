@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <deque>
 #include <filesystem>
 #include <functional>
@@ -12,6 +13,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <utility>
 
 using namespace std::string_literals;
 
@@ -211,6 +213,60 @@ namespace
         std::vector<npp::platform::NotificationRequest> delivered;
     };
 
+    class FakeStatusItem final : public npp::platform::StatusItem
+    {
+    public:
+        explicit FakeStatusItem(npp::platform::StatusItemDescriptor descriptor)
+            : descriptor_(std::move(descriptor))
+        {
+        }
+
+        bool show() override
+        {
+            ++showCount;
+            visible = true;
+            return true;
+        }
+
+        bool hide() override
+        {
+            ++hideCount;
+            const bool wasVisible = visible;
+            visible = false;
+            return wasVisible;
+        }
+
+        bool isVisible() const override
+        {
+            return visible;
+        }
+
+        bool reinstall() override
+        {
+            ++reinstallCount;
+            return visible;
+        }
+
+        npp::platform::StatusItemDescriptor descriptor_;
+        std::size_t showCount = 0;
+        std::size_t hideCount = 0;
+        std::size_t reinstallCount = 0;
+        bool visible = false;
+    };
+
+    class FakeStatusItemService final : public npp::platform::StatusItemService
+    {
+    public:
+        std::unique_ptr<npp::platform::StatusItem> create(const npp::platform::StatusItemDescriptor& descriptor) override
+        {
+            auto item = std::make_unique<FakeStatusItem>(descriptor);
+            created.push_back(item.get());
+            return item;
+        }
+
+        std::vector<FakeStatusItem*> created;
+    };
+
     class FakeSystemServices final : public npp::platform::SystemServices
     {
     public:
@@ -249,6 +305,11 @@ namespace
             return notifications_;
         }
 
+        npp::platform::StatusItemService& statusItems() override
+        {
+            return statusItems_;
+        }
+
         std::function<std::unique_ptr<npp::platform::FileWatcher>()> fileWatcherFactory;
 
     private:
@@ -257,6 +318,7 @@ namespace
         npp::platform::DocumentOpenQueue documentQueue_;
         npp::platform::SharingCommandQueue sharingQueue_;
         FakeNotificationService notifications_;
+        FakeStatusItemService statusItems_;
     };
 }
 
@@ -369,6 +431,35 @@ TEST_CASE("system services override injects clipboard and file watcher mocks", "
         CHECK(fakeNotifications->delivered.front().playSound);
         CHECK(fakeNotifications->withdraw(info.identifier));
         CHECK(fakeNotifications->delivered.empty());
+
+        auto& statusService = services.statusItems();
+        auto* fakeStatusService = dynamic_cast<FakeStatusItemService*>(&statusService);
+        REQUIRE(fakeStatusService);
+
+        npp::platform::StatusItemDescriptor statusDescriptor{};
+        statusDescriptor.identifier = L"tests.status.item"s;
+        statusDescriptor.tooltip = L"Status item"s;
+#ifdef _WIN32
+        statusDescriptor.windows.owner = reinterpret_cast<void*>(0x1234);
+        statusDescriptor.windows.iconId = 512u;
+        statusDescriptor.windows.callbackMessage = 0x400u;
+        statusDescriptor.windows.icon = reinterpret_cast<void*>(0x5678);
+#endif
+
+        auto statusItem = statusService.create(statusDescriptor);
+        REQUIRE(statusItem);
+        CHECK_FALSE(statusItem->isVisible());
+        CHECK(statusItem->show());
+        CHECK(statusItem->isVisible());
+        CHECK(statusItem->reinstall());
+        CHECK(statusItem->hide());
+        CHECK_FALSE(statusItem->isVisible());
+        REQUIRE_FALSE(fakeStatusService->created.empty());
+        auto* trackedStatus = fakeStatusService->created.back();
+        REQUIRE(trackedStatus);
+        CHECK(trackedStatus->showCount == 1);
+        CHECK(trackedStatus->hideCount == 1);
+        CHECK(trackedStatus->reinstallCount == 1);
     }
 
     auto& fallbackServices = npp::platform::SystemServices::instance();
@@ -382,4 +473,21 @@ TEST_CASE("system services override injects clipboard and file watcher mocks", "
     CHECK(fallbackServices.documentOpenQueue().empty());
     CHECK(fallbackServices.sharingCommands().empty());
     CHECK_FALSE(fallbackServices.notifications().withdraw(L"unknown.identifier"));
+
+    npp::platform::StatusItemDescriptor fallbackDescriptor{};
+    fallbackDescriptor.identifier = L"fallback.status"s;
+    fallbackDescriptor.tooltip = L"Fallback"s;
+#ifdef _WIN32
+    fallbackDescriptor.windows.owner = nullptr;
+    fallbackDescriptor.windows.iconId = 0u;
+    fallbackDescriptor.windows.callbackMessage = 0u;
+    fallbackDescriptor.windows.icon = nullptr;
+#endif
+    auto fallbackStatus = fallbackServices.statusItems().create(fallbackDescriptor);
+    REQUIRE(fallbackStatus);
+    CHECK(fallbackStatus->show());
+    CHECK(fallbackStatus->isVisible());
+    CHECK_FALSE(fallbackStatus->reinstall());
+    CHECK(fallbackStatus->hide());
+    CHECK_FALSE(fallbackStatus->isVisible());
 }

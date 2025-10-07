@@ -131,6 +131,52 @@ namespace npp::platform
         }
     };
 
+    struct StatusItemDescriptor
+    {
+        std::wstring identifier;
+        std::wstring tooltip;
+#ifdef _WIN32
+        struct WindowsOptions
+        {
+            void* owner = nullptr;
+            std::uint32_t iconId = 0u;
+            std::uint32_t callbackMessage = 0u;
+            void* icon = nullptr;
+        } windows;
+#endif
+    };
+
+    class StatusItem
+    {
+    public:
+        virtual ~StatusItem() = default;
+
+        virtual bool show() = 0;
+
+        virtual bool hide() = 0;
+
+        virtual bool isVisible() const = 0;
+
+        virtual bool reinstall()
+        {
+            return false;
+        }
+
+        virtual bool updateTooltip(const std::wstring& tooltip)
+        {
+            (void)tooltip;
+            return false;
+        }
+    };
+
+    class StatusItemService
+    {
+    public:
+        virtual ~StatusItemService() = default;
+
+        virtual std::unique_ptr<StatusItem> create(const StatusItemDescriptor& descriptor) = 0;
+    };
+
     class FileWatcher
     {
     public:
@@ -161,6 +207,8 @@ namespace npp::platform
         virtual SharingCommandQueue& sharingCommands() = 0;
 
         virtual NotificationService& notifications() = 0;
+
+        virtual StatusItemService& statusItems() = 0;
 
         static SystemServices& instance();
     };

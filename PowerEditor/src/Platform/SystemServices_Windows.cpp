@@ -3,6 +3,7 @@
 #include "Platform/SystemServices.h"
 
 #include "WinControls/ReadDirectoryChanges/ReadDirectoryChanges.h"
+#include "WinControls/TrayIcon/trayIconControler.h"
 
 #include <windows.h>
 #include <shellapi.h>
@@ -15,6 +16,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "resource.h"
 
@@ -321,6 +323,91 @@ namespace npp::platform
             bool iconActive_ = false;
         };
 
+        class WindowsStatusItem final : public StatusItem
+        {
+        public:
+            explicit WindowsStatusItem(StatusItemDescriptor descriptor)
+                : descriptor_(std::move(descriptor))
+            {
+            }
+
+            ~WindowsStatusItem() override
+            {
+                hide();
+            }
+
+            bool show() override
+            {
+                if (!ensureController())
+                {
+                    return false;
+                }
+
+                if (controller_->isInTray())
+                {
+                    return true;
+                }
+
+                return controller_->doTrayIcon(NIM_ADD) == 0;
+            }
+
+            bool hide() override
+            {
+                if (!controller_ || !controller_->isInTray())
+                {
+                    return false;
+                }
+
+                return controller_->doTrayIcon(NIM_DELETE) == 0;
+            }
+
+            bool isVisible() const override
+            {
+                return controller_ && controller_->isInTray();
+            }
+
+            bool reinstall() override
+            {
+                if (!controller_ || !controller_->isInTray())
+                {
+                    return false;
+                }
+
+                return controller_->reAddTrayIcon() == 0;
+            }
+
+        private:
+            bool ensureController()
+            {
+                if (controller_)
+                {
+                    return true;
+                }
+
+                auto owner = reinterpret_cast<HWND>(descriptor_.windows.owner);
+                auto icon = reinterpret_cast<HICON>(descriptor_.windows.icon);
+                if (!owner || !icon || descriptor_.windows.callbackMessage == 0u)
+                {
+                    return false;
+                }
+
+                controller_ = std::make_unique<trayIconControler>(owner, static_cast<UINT>(descriptor_.windows.iconId), static_cast<UINT>(descriptor_.windows.callbackMessage), icon, descriptor_.tooltip.c_str());
+                return controller_ != nullptr;
+            }
+
+            StatusItemDescriptor descriptor_;
+            std::unique_ptr<trayIconControler> controller_;
+        };
+
+        class WindowsStatusItemService final : public StatusItemService
+        {
+        public:
+            std::unique_ptr<StatusItem> create(const StatusItemDescriptor& descriptor) override
+            {
+                return std::make_unique<WindowsStatusItem>(descriptor);
+            }
+        };
+
         class ClipboardCloser
         {
         public:
@@ -576,12 +663,18 @@ namespace npp::platform
                 return notifications_;
             }
 
+            StatusItemService& statusItems() override
+            {
+                return statusItems_;
+            }
+
         private:
             WindowsClipboardService clipboard_;
             WindowsPreferencesStore preferences_;
             DocumentOpenQueue documentQueue_;
             SharingCommandQueue sharingQueue_;
             WindowsNotificationService notifications_;
+            WindowsStatusItemService statusItems_;
         };
     }
 

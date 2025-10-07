@@ -294,15 +294,12 @@ BufferID Notepad_plus::doOpen(const wstring& fileName, bool isRecursive, bool is
 	// If we found the document, then we don't open the existing doc. We return the found buffer ID instead.
     if (foundBufID != BUFFER_INVALID && !isSnapshotMode)
     {
-        if (_pTrayIco)
+        if (statusItemVisible())
         {
-            if (_pTrayIco->isInTray())
-            {
-                ::ShowWindow(_pPublicInterface->getHSelf(), SW_SHOW);
-                if (!_pPublicInterface->isPrelaunch())
-                    _pTrayIco->doTrayIcon(REMOVE);
-                ::SendMessage(_pPublicInterface->getHSelf(), WM_SIZE, 0, 0);
-            }
+            ::ShowWindow(_pPublicInterface->getHSelf(), SW_SHOW);
+            if (!_pPublicInterface->isPrelaunch())
+                hideStatusItem();
+            ::SendMessage(_pPublicInterface->getHSelf(), WM_SIZE, 0, 0);
         }
         return foundBufID;
     }
@@ -461,15 +458,12 @@ BufferID Notepad_plus::doOpen(const wstring& fileName, bool isRecursive, bool is
 
         loadBufferIntoView(buffer, currentView());
 
-        if (_pTrayIco)
+        if (statusItemVisible())
         {
-            if (_pTrayIco->isInTray())
-            {
-                ::ShowWindow(_pPublicInterface->getHSelf(), SW_SHOW);
-                if (!_pPublicInterface->isPrelaunch())
-                    _pTrayIco->doTrayIcon(REMOVE);
-                ::SendMessage(_pPublicInterface->getHSelf(), WM_SIZE, 0, 0);
-            }
+            ::ShowWindow(_pPublicInterface->getHSelf(), SW_SHOW);
+            if (!_pPublicInterface->isPrelaunch())
+                hideStatusItem();
+            ::SendMessage(_pPublicInterface->getHSelf(), WM_SIZE, 0, 0);
         }
         PathRemoveFileSpec(longFileName);
         _linkTriggered = true;
