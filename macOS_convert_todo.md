@@ -42,7 +42,7 @@
 - "Dostosować operacje przeciągnij-i-upuść oraz otwieranie wielu dokumentów za pomocą NSDocumentController" — przygotowano kolejkę `DocumentOpenQueue` w `SystemServices` z obsługą wielu ścieżek i testami jednostkowymi, aby umożliwić integrację z NSDocumentController i ujednolicić przetwarzanie żądań otwarcia
 - "Zaimplementować integrację z usługami udostępniania (Quick Look, Services menu) oraz otwieranie plików z Finder/spotlight (+) — dodano kolejkę `SharingCommandQueue` w `SystemServices` wraz z testami i obsługą w override, aby przekazywać żądania Quick Look/Services do warstwy UI"
 - "Przygotować obsługę drukowania i podglądu wydruku w oparciu o NSPrintOperation"
-- "Zaadaptować system powiadomień (toastów) do Notification Center"
+- "Zaadaptować system powiadomień (toastów) do Notification Center (+)"
 - "Zastąpić funkcje związane z paskiem zadań i ikoną w zasobniku odpowiednikami w Dock i menu statusowym"
 
 ## Architektura wtyczek i rozszerzeń

@@ -5,13 +5,18 @@
 #include "WinControls/ReadDirectoryChanges/ReadDirectoryChanges.h"
 
 #include <windows.h>
+#include <shellapi.h>
 
+#include <cwchar>
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
+
+#include "resource.h"
 
 namespace npp::platform
 {
@@ -153,6 +158,167 @@ namespace npp::platform
                 ::RegCloseKey(handle);
                 return status == ERROR_SUCCESS;
             }
+        };
+
+        class WindowsNotificationService final : public NotificationService
+        {
+        public:
+            WindowsNotificationService()
+            {
+                registerWindowClass();
+                createHostWindow();
+                initializeIconData();
+            }
+
+            ~WindowsNotificationService() override
+            {
+                if (iconActive_)
+                {
+                    ::Shell_NotifyIconW(NIM_DELETE, &iconData_);
+                }
+
+                if (window_)
+                {
+                    ::DestroyWindow(window_);
+                }
+            }
+
+            bool post(const NotificationRequest& request) override
+            {
+                if (!ensureIcon())
+                {
+                    return false;
+                }
+
+                configureBalloon(request);
+                return ::Shell_NotifyIconW(NIM_MODIFY, &iconData_) == TRUE;
+            }
+
+            bool withdraw(const std::wstring& identifier) override
+            {
+                (void)identifier;
+                return false;
+            }
+
+        private:
+            static constexpr const wchar_t* kWindowClassName = L"NotepadPlusPlus.NotificationHost";
+
+            static LRESULT CALLBACK HostWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+            {
+                if (msg == WM_DESTROY)
+                {
+                    return 0;
+                }
+
+                return ::DefWindowProcW(hwnd, msg, wParam, lParam);
+            }
+
+            void registerWindowClass()
+            {
+                WNDCLASSEXW cls{};
+                cls.cbSize = sizeof(WNDCLASSEXW);
+                cls.lpfnWndProc = &HostWndProc;
+                cls.hInstance = ::GetModuleHandleW(nullptr);
+                cls.lpszClassName = kWindowClassName;
+                cls.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
+                ::RegisterClassExW(&cls);
+            }
+
+            void createHostWindow()
+            {
+                window_ = ::CreateWindowExW(WS_EX_TOOLWINDOW, kWindowClassName, L"Notepad++ Notifications", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, ::GetModuleHandleW(nullptr), nullptr);
+            }
+
+            void initializeIconData()
+            {
+                iconData_.cbSize = sizeof(NOTIFYICONDATAW);
+                iconData_.hWnd = window_;
+                iconData_.uID = 1u;
+                iconData_.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+                iconData_.uCallbackMessage = WM_APP + 98;
+                iconData_.hIcon = ::LoadIconW(::GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_M30ICON));
+                copyTruncated(iconData_.szTip, ARRAYSIZE(iconData_.szTip), L"Notepad++");
+            }
+
+            bool ensureIcon()
+            {
+                if (!window_)
+                {
+                    return false;
+                }
+
+                if (!iconActive_)
+                {
+                    iconActive_ = ::Shell_NotifyIconW(NIM_ADD, &iconData_) == TRUE;
+                    if (iconActive_)
+                    {
+                        iconData_.uVersion = NOTIFYICON_VERSION_4;
+                        ::Shell_NotifyIconW(NIM_SETVERSION, &iconData_);
+                    }
+                }
+
+                return iconActive_;
+            }
+
+            static void copyTruncated(wchar_t* destination, size_t capacity, const std::wstring& value)
+            {
+                if (!destination || capacity == 0)
+                {
+                    return;
+                }
+
+                const size_t length = std::min(value.size(), capacity - 1u);
+                if (length > 0)
+                {
+                    std::wmemcpy(destination, value.c_str(), length);
+                }
+
+                destination[length] = L'\0';
+            }
+
+            void configureBalloon(const NotificationRequest& request)
+            {
+                iconData_.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_INFO;
+                copyTruncated(iconData_.szTip, ARRAYSIZE(iconData_.szTip), request.title.empty() ? L"Notepad++" : request.title);
+                copyTruncated(iconData_.szInfoTitle, ARRAYSIZE(iconData_.szInfoTitle), request.title.empty() ? L"Notepad++" : request.title);
+                copyTruncated(iconData_.szInfo, ARRAYSIZE(iconData_.szInfo), request.body);
+
+                switch (request.urgency)
+                {
+                    case NotificationUrgency::Warning:
+                        iconData_.dwInfoFlags = NIIF_WARNING;
+                        break;
+                    case NotificationUrgency::Error:
+                        iconData_.dwInfoFlags = NIIF_ERROR;
+                        break;
+                    default:
+                        iconData_.dwInfoFlags = NIIF_INFO;
+                        break;
+                }
+
+                if (request.dismissAfter.has_value())
+                {
+                    const auto clamped = std::clamp(*request.dismissAfter, std::chrono::milliseconds{1000}, std::chrono::milliseconds{60000});
+                    iconData_.uTimeout = static_cast<UINT>(clamped.count());
+                }
+                else
+                {
+                    iconData_.uTimeout = 10000u;
+                }
+
+                if (!request.playSound)
+                {
+                    iconData_.dwInfoFlags |= NIIF_NOSOUND;
+                }
+                else
+                {
+                    iconData_.dwInfoFlags &= ~NIIF_NOSOUND;
+                }
+            }
+
+            HWND window_ = nullptr;
+            NOTIFYICONDATAW iconData_{};
+            bool iconActive_ = false;
         };
 
         class ClipboardCloser
@@ -405,11 +571,17 @@ namespace npp::platform
                 return sharingQueue_;
             }
 
+            NotificationService& notifications() override
+            {
+                return notifications_;
+            }
+
         private:
             WindowsClipboardService clipboard_;
             WindowsPreferencesStore preferences_;
             DocumentOpenQueue documentQueue_;
             SharingCommandQueue sharingQueue_;
+            WindowsNotificationService notifications_;
         };
     }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -98,6 +99,38 @@ namespace npp::platform
         virtual std::optional<std::wstring> getText() = 0;
     };
 
+    enum class NotificationUrgency
+    {
+        Information,
+        Warning,
+        Error,
+    };
+
+    struct NotificationRequest
+    {
+        std::wstring identifier;
+        std::wstring title;
+        std::wstring subtitle;
+        std::wstring body;
+        NotificationUrgency urgency = NotificationUrgency::Information;
+        bool playSound = false;
+        std::optional<std::chrono::milliseconds> dismissAfter;
+    };
+
+    class NotificationService
+    {
+    public:
+        virtual ~NotificationService() = default;
+
+        virtual bool post(const NotificationRequest& request) = 0;
+
+        virtual bool withdraw(const std::wstring& identifier)
+        {
+            (void)identifier;
+            return false;
+        }
+    };
+
     class FileWatcher
     {
     public:
@@ -126,6 +159,8 @@ namespace npp::platform
         virtual DocumentOpenQueue& documentOpenQueue() = 0;
 
         virtual SharingCommandQueue& sharingCommands() = 0;
+
+        virtual NotificationService& notifications() = 0;
 
         static SystemServices& instance();
     };

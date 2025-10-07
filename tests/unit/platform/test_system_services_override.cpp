@@ -2,6 +2,8 @@
 
 #include "Platform/SystemServices.h"
 
+#include <algorithm>
+#include <chrono>
 #include <deque>
 #include <filesystem>
 #include <functional>
@@ -9,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 using namespace std::string_literals;
 
@@ -187,6 +190,27 @@ namespace
         std::map<std::wstring, bool> booleans;
     };
 
+    class FakeNotificationService final : public npp::platform::NotificationService
+    {
+    public:
+        bool post(const npp::platform::NotificationRequest& request) override
+        {
+            delivered.push_back(request);
+            return true;
+        }
+
+        bool withdraw(const std::wstring& identifier) override
+        {
+            const auto before = delivered.size();
+            delivered.erase(std::remove_if(delivered.begin(), delivered.end(), [&](const auto& entry) {
+                return entry.identifier == identifier;
+            }), delivered.end());
+            return delivered.size() != before;
+        }
+
+        std::vector<npp::platform::NotificationRequest> delivered;
+    };
+
     class FakeSystemServices final : public npp::platform::SystemServices
     {
     public:
@@ -220,6 +244,11 @@ namespace
             return sharingQueue_;
         }
 
+        npp::platform::NotificationService& notifications() override
+        {
+            return notifications_;
+        }
+
         std::function<std::unique_ptr<npp::platform::FileWatcher>()> fileWatcherFactory;
 
     private:
@@ -227,6 +256,7 @@ namespace
         FakePreferences preferences_;
         npp::platform::DocumentOpenQueue documentQueue_;
         npp::platform::SharingCommandQueue sharingQueue_;
+        FakeNotificationService notifications_;
     };
 }
 
@@ -321,6 +351,24 @@ TEST_CASE("system services override injects clipboard and file watcher mocks", "
         CHECK(secondShare->items.front() == observedPath / "service.rtf");
         REQUIRE(secondShare->serviceIdentifier.has_value());
         CHECK(secondShare->serviceIdentifier == L"com.example.NotepadPlusPlus.test"s);
+
+        auto& notificationService = services.notifications();
+        npp::platform::NotificationRequest info{};
+        info.identifier = L"tests.notification.success"s;
+        info.title = L"Background Save"s;
+        info.body = L"Document saved successfully."s;
+        info.urgency = npp::platform::NotificationUrgency::Information;
+        info.playSound = true;
+        info.dismissAfter = std::chrono::milliseconds{1500};
+
+        REQUIRE(notificationService.post(info));
+        auto* fakeNotifications = dynamic_cast<FakeNotificationService*>(&notificationService);
+        REQUIRE(fakeNotifications);
+        REQUIRE(fakeNotifications->delivered.size() == 1);
+        CHECK(fakeNotifications->delivered.front().identifier == info.identifier);
+        CHECK(fakeNotifications->delivered.front().playSound);
+        CHECK(fakeNotifications->withdraw(info.identifier));
+        CHECK(fakeNotifications->delivered.empty());
     }
 
     auto& fallbackServices = npp::platform::SystemServices::instance();
@@ -333,4 +381,5 @@ TEST_CASE("system services override injects clipboard and file watcher mocks", "
 #endif
     CHECK(fallbackServices.documentOpenQueue().empty());
     CHECK(fallbackServices.sharingCommands().empty());
+    CHECK_FALSE(fallbackServices.notifications().withdraw(L"unknown.identifier"));
 }

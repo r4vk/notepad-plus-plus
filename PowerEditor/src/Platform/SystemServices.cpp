@@ -1,6 +1,7 @@
 #include "Platform/SystemServices.h"
 
 #include <algorithm>
+#include <chrono>
 #include <deque>
 #include <iterator>
 #include <map>
@@ -15,7 +16,12 @@
 #include <vector>
 
 #if defined(__APPLE__)
+#include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
+#include <dispatch/dispatch.h>
+#include <objc/message.h>
+#include <objc/objc.h>
+#include <objc/runtime.h>
 #endif
 
 namespace npp::platform
@@ -165,6 +171,31 @@ namespace npp::platform
             std::mutex mutex_;
             std::wstring text_;
             bool hasValue_ = false;
+        };
+
+        class StubNotificationService final : public NotificationService
+        {
+        public:
+            bool post(const NotificationRequest& request) override
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                delivered_.push_back(request);
+                return false;
+            }
+
+            bool withdraw(const std::wstring& identifier) override
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                const auto before = delivered_.size();
+                delivered_.erase(std::remove_if(delivered_.begin(), delivered_.end(), [&](const auto& notification) {
+                    return notification.identifier == identifier;
+                }), delivered_.end());
+                return before != delivered_.size();
+            }
+
+        private:
+            std::mutex mutex_;
+            std::vector<NotificationRequest> delivered_;
         };
 
         class StubFileWatcher final : public FileWatcher
@@ -510,6 +541,255 @@ namespace npp::platform
                 std::thread worker_;
                 bool running_ = false;
             };
+
+            std::wstring toWString(CFStringRef string)
+            {
+                if (!string)
+                {
+                    return {};
+                }
+
+                const CFIndex length = CFStringGetLength(string);
+                if (length <= 0)
+                {
+                    return {};
+                }
+
+                std::wstring result(static_cast<std::size_t>(length), L'\0');
+                CFStringGetCharacters(string, CFRangeMake(0, length), reinterpret_cast<UniChar*>(result.data()));
+                return result;
+            }
+
+            id makeNSString(const std::wstring& value)
+            {
+                if (value.empty())
+                {
+                    return nullptr;
+                }
+
+                CFStringRef cfString = CFStringCreateWithCharacters(kCFAllocatorDefault, reinterpret_cast<const UniChar*>(value.data()), static_cast<CFIndex>(value.size()));
+                return reinterpret_cast<id>(cfString);
+            }
+
+            void setStringProperty(id object, const char* selectorName, const std::wstring& value)
+            {
+                if (!object || value.empty())
+                {
+                    return;
+                }
+
+                SEL selector = sel_registerName(selectorName);
+                id stringValue = makeNSString(value);
+                if (!stringValue)
+                {
+                    return;
+                }
+
+                reinterpret_cast<void (*)(id, SEL, id)>(objc_msgSend)(object, selector, stringValue);
+                CFRelease(reinterpret_cast<CFTypeRef>(stringValue));
+            }
+
+            CFStringRef urgencyString(NotificationUrgency urgency)
+            {
+                switch (urgency)
+                {
+                    case NotificationUrgency::Warning:
+                        return CFSTR("warning");
+                    case NotificationUrgency::Error:
+                        return CFSTR("error");
+                    default:
+                        return CFSTR("info");
+                }
+            }
+
+            struct NotificationRemovalContext
+            {
+                id center = nullptr;
+                id notification = nullptr;
+            };
+
+            void removeDeliveredNotificationCallback(void* context)
+            {
+                std::unique_ptr<NotificationRemovalContext> removal{static_cast<NotificationRemovalContext*>(context)};
+                if (!removal)
+                {
+                    return;
+                }
+
+                if (removal->center && removal->notification)
+                {
+                    reinterpret_cast<void (*)(id, SEL, id)>(objc_msgSend)(removal->center, sel_registerName("removeDeliveredNotification:"), removal->notification);
+                    reinterpret_cast<void (*)(id, SEL)>(objc_msgSend)(removal->notification, sel_registerName("release"));
+                    reinterpret_cast<void (*)(id, SEL)>(objc_msgSend)(removal->center, sel_registerName("release"));
+                }
+            }
+
+            class MacNotificationService final : public NotificationService
+            {
+            public:
+                bool post(const NotificationRequest& request) override
+                {
+                    id pool = createAutoreleasePool();
+                    if (!pool)
+                    {
+                        return false;
+                    }
+
+                    id notificationClass = objc_getClass("NSUserNotification");
+                    id centerClass = objc_getClass("NSUserNotificationCenter");
+                    if (!notificationClass || !centerClass)
+                    {
+                        drainAutoreleasePool(pool);
+                        return false;
+                    }
+
+                    id notification = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(notificationClass, sel_registerName("alloc"));
+                    notification = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(notification, sel_registerName("init"));
+                    if (!notification)
+                    {
+                        drainAutoreleasePool(pool);
+                        return false;
+                    }
+
+                    setStringProperty(notification, "setTitle:", request.title);
+                    setStringProperty(notification, "setSubtitle:", request.subtitle);
+                    setStringProperty(notification, "setInformativeText:", request.body);
+
+                    if (!request.identifier.empty())
+                    {
+                        setStringProperty(notification, "setIdentifier:", request.identifier);
+                    }
+
+                    CFMutableDictionaryRef userInfo = CFDictionaryCreateMutable(kCFAllocatorDefault, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+                    if (userInfo)
+                    {
+                        CFStringRef key = CFSTR("severity");
+                        CFDictionarySetValue(userInfo, key, urgencyString(request.urgency));
+                        reinterpret_cast<void (*)(id, SEL, id)>(objc_msgSend)(notification, sel_registerName("setUserInfo:"), userInfo);
+                        CFRelease(userInfo);
+                    }
+
+                    if (request.playSound)
+                    {
+                        id soundName = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(notificationClass, sel_registerName("defaultSoundName"));
+                        reinterpret_cast<void (*)(id, SEL, id)>(objc_msgSend)(notification, sel_registerName("setSoundName:"), soundName);
+                    }
+
+                    id center = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(centerClass, sel_registerName("defaultUserNotificationCenter"));
+                    if (!center)
+                    {
+                        reinterpret_cast<void (*)(id, SEL)>(objc_msgSend)(notification, sel_registerName("release"));
+                        drainAutoreleasePool(pool);
+                        return false;
+                    }
+
+                    reinterpret_cast<void (*)(id, SEL, id)>(objc_msgSend)(center, sel_registerName("deliverNotification:"), notification);
+
+                    if (request.dismissAfter.has_value())
+                    {
+                        const auto clamped = std::clamp(*request.dismissAfter, std::chrono::milliseconds{1000}, std::chrono::milliseconds{60000});
+                        auto removal = std::make_unique<NotificationRemovalContext>();
+                        removal->center = center;
+                        removal->notification = notification;
+                        reinterpret_cast<void (*)(id, SEL)>(objc_msgSend)(removal->center, sel_registerName("retain"));
+                        reinterpret_cast<void (*)(id, SEL)>(objc_msgSend)(removal->notification, sel_registerName("retain"));
+                        dispatch_after_f(dispatch_time(DISPATCH_TIME_NOW, static_cast<int64_t>(clamped.count()) * NSEC_PER_MSEC), dispatch_get_main_queue(), removal.release(), removeDeliveredNotificationCallback);
+                    }
+
+                    reinterpret_cast<void (*)(id, SEL)>(objc_msgSend)(notification, sel_registerName("release"));
+                    drainAutoreleasePool(pool);
+                    return true;
+                }
+
+                bool withdraw(const std::wstring& identifier) override
+                {
+                    if (identifier.empty())
+                    {
+                        return false;
+                    }
+
+                    id pool = createAutoreleasePool();
+                    if (!pool)
+                    {
+                        return false;
+                    }
+
+                    id centerClass = objc_getClass("NSUserNotificationCenter");
+                    if (!centerClass)
+                    {
+                        drainAutoreleasePool(pool);
+                        return false;
+                    }
+
+                    id center = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(centerClass, sel_registerName("defaultUserNotificationCenter"));
+                    if (!center)
+                    {
+                        drainAutoreleasePool(pool);
+                        return false;
+                    }
+
+                    id delivered = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(center, sel_registerName("deliveredNotifications"));
+                    if (!delivered)
+                    {
+                        drainAutoreleasePool(pool);
+                        return false;
+                    }
+
+                    id enumerator = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(delivered, sel_registerName("objectEnumerator"));
+                    if (!enumerator)
+                    {
+                        drainAutoreleasePool(pool);
+                        return false;
+                    }
+
+                    bool removed = false;
+                    while (true)
+                    {
+                        id candidate = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(enumerator, sel_registerName("nextObject"));
+                        if (!candidate)
+                        {
+                            break;
+                        }
+
+                        id identifierValue = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(candidate, sel_registerName("identifier"));
+                        if (!identifierValue)
+                        {
+                            continue;
+                        }
+
+                        if (toWString(reinterpret_cast<CFStringRef>(identifierValue)) == identifier)
+                        {
+                            reinterpret_cast<void (*)(id, SEL, id)>(objc_msgSend)(center, sel_registerName("removeDeliveredNotification:"), candidate);
+                            removed = true;
+                            break;
+                        }
+                    }
+
+                    drainAutoreleasePool(pool);
+                    return removed;
+                }
+
+            private:
+                static id createAutoreleasePool()
+                {
+                    id poolClass = objc_getClass("NSAutoreleasePool");
+                    if (!poolClass)
+                    {
+                        return nullptr;
+                    }
+
+                    id pool = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(poolClass, sel_registerName("alloc"));
+                    return reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(pool, sel_registerName("init"));
+                }
+
+                static void drainAutoreleasePool(id pool)
+                {
+                    if (pool)
+                    {
+                        reinterpret_cast<void (*)(id, SEL)>(objc_msgSend)(pool, sel_registerName("drain"));
+                    }
+                }
+            };
         }
 #endif
 
@@ -545,11 +825,17 @@ namespace npp::platform
                 return sharingQueue_;
             }
 
+            NotificationService& notifications() override
+            {
+                return notifications_;
+            }
+
         private:
             StubClipboardService clipboard_;
             StubPreferencesStore preferences_;
             DocumentOpenQueue documentQueue_;
             SharingCommandQueue sharingQueue_;
+            StubNotificationService notifications_;
         };
 
 #ifdef _WIN32
@@ -583,11 +869,17 @@ namespace npp::platform
                 return sharingQueue_;
             }
 
+            NotificationService& notifications() override
+            {
+                return notifications_;
+            }
+
         private:
             StubClipboardService clipboard_;
             StubPreferencesStore preferences_;
             DocumentOpenQueue documentQueue_;
             SharingCommandQueue sharingQueue_;
+            MacNotificationService notifications_;
         };
 #endif
 
