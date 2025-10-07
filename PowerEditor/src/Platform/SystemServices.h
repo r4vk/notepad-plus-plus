@@ -7,6 +7,7 @@
 #include <string>
 
 #include "Platform/DocumentOpenQueue.h"
+#include "Platform/SharingCommandQueue.h"
 
 namespace npp::platform
 {
@@ -123,6 +124,8 @@ namespace npp::platform
         virtual PreferencesStore& preferences() = 0;
 
         virtual DocumentOpenQueue& documentOpenQueue() = 0;
+
+        virtual SharingCommandQueue& sharingCommands() = 0;
 
         static SystemServices& instance();
     };

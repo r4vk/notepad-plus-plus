@@ -215,12 +215,18 @@ namespace
             return documentQueue_;
         }
 
+        npp::platform::SharingCommandQueue& sharingCommands() override
+        {
+            return sharingQueue_;
+        }
+
         std::function<std::unique_ptr<npp::platform::FileWatcher>()> fileWatcherFactory;
 
     private:
         FakeClipboard clipboard_;
         FakePreferences preferences_;
         npp::platform::DocumentOpenQueue documentQueue_;
+        npp::platform::SharingCommandQueue sharingQueue_;
     };
 }
 
@@ -288,6 +294,33 @@ TEST_CASE("system services override injects clipboard and file watcher mocks", "
         CHECK(queued->paths.size() == 1);
         CHECK(queued->paths.front() == observedPath / "queued.txt");
         CHECK(queued->source == npp::platform::DocumentOpenSource::DragAndDrop);
+
+        auto& sharingQueue = services.sharingCommands();
+        npp::platform::SharingCommand share{};
+        share.type = npp::platform::SharingCommandType::QuickLookPreview;
+        share.items = {observedPath / "preview.txt"};
+        sharingQueue.enqueue(share);
+
+        npp::platform::SharingCommand serviceAction{};
+        serviceAction.type = npp::platform::SharingCommandType::ServicesMenu;
+        serviceAction.items = {observedPath / "service.rtf"};
+        serviceAction.serviceIdentifier = L"com.example.NotepadPlusPlus.test"s;
+        sharingQueue.enqueue(serviceAction);
+
+        const auto firstShare = sharingQueue.poll();
+        REQUIRE(firstShare.has_value());
+        CHECK(firstShare->type == npp::platform::SharingCommandType::QuickLookPreview);
+        REQUIRE(firstShare->items.size() == 1);
+        CHECK(firstShare->items.front() == observedPath / "preview.txt");
+        CHECK_FALSE(firstShare->serviceIdentifier.has_value());
+
+        const auto secondShare = sharingQueue.poll();
+        REQUIRE(secondShare.has_value());
+        CHECK(secondShare->type == npp::platform::SharingCommandType::ServicesMenu);
+        REQUIRE(secondShare->items.size() == 1);
+        CHECK(secondShare->items.front() == observedPath / "service.rtf");
+        REQUIRE(secondShare->serviceIdentifier.has_value());
+        CHECK(secondShare->serviceIdentifier == L"com.example.NotepadPlusPlus.test"s);
     }
 
     auto& fallbackServices = npp::platform::SystemServices::instance();
@@ -299,4 +332,5 @@ TEST_CASE("system services override injects clipboard and file watcher mocks", "
     CHECK_FALSE(fallbackWatcher->watch(std::filesystem::path{"/tmp"}, FileWatchEvent::FileName));
 #endif
     CHECK(fallbackServices.documentOpenQueue().empty());
+    CHECK(fallbackServices.sharingCommands().empty());
 }

@@ -540,10 +540,16 @@ namespace npp::platform
                 return documentQueue_;
             }
 
+            SharingCommandQueue& sharingCommands() override
+            {
+                return sharingQueue_;
+            }
+
         private:
             StubClipboardService clipboard_;
             StubPreferencesStore preferences_;
             DocumentOpenQueue documentQueue_;
+            SharingCommandQueue sharingQueue_;
         };
 
 #ifdef _WIN32
@@ -572,10 +578,16 @@ namespace npp::platform
                 return documentQueue_;
             }
 
+            SharingCommandQueue& sharingCommands() override
+            {
+                return sharingQueue_;
+            }
+
         private:
             StubClipboardService clipboard_;
             StubPreferencesStore preferences_;
             DocumentOpenQueue documentQueue_;
+            SharingCommandQueue sharingQueue_;
         };
 #endif
 

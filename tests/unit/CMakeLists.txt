@@ -17,6 +17,7 @@ add_library(npp_platform STATIC
     ${POWEREDITOR_SRC}/Platform/SettingsLocator.cpp
     ${POWEREDITOR_SRC}/Platform/SystemInfo.cpp
     ${POWEREDITOR_SRC}/Platform/DocumentOpenQueue.cpp
+    ${POWEREDITOR_SRC}/Platform/SharingCommandQueue.cpp
     ${POWEREDITOR_SRC}/Platform/SystemServices.cpp
     ${POWEREDITOR_SRC}/Platform/SystemServices_Windows.cpp
 )
@@ -51,6 +52,7 @@ add_executable(npp_platform_tests
     platform/test_system_appearance.cpp
     platform/test_preferences_migrator.cpp
     platform/test_document_open_queue.cpp
+    platform/test_sharing_command_queue.cpp
 )
 
 target_link_libraries(npp_platform_tests
