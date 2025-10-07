@@ -46,7 +46,7 @@
 - "Zastąpić funkcje związane z paskiem zadań i ikoną w zasobniku odpowiednikami w Dock i menu statusowym (+) — dodano `StatusItemService` w `SystemServices` wraz z implementacją Windows/stubem testowym oraz zrefaktoryzowano kod Notepad++ do korzystania z abstrakcji, przygotowując integrację z Dock/NSStatusItem"
 
 ## Architektura wtyczek i rozszerzeń
-- "Przygotować SDK wtyczek dla macOS (nagłówki, przykładowe projekty Xcode/CMake, dokumentacja budowy)"
+- "Przygotować SDK wtyczek dla macOS (nagłówki, przykładowe projekty Xcode/CMake, dokumentacja budowy) (+) — dodano pakiet `tools/macos_plugin_sdk` z przenośnymi nagłówkami, presetami CMake/Xcode i przykładową wtyczką HelloMac"
 
 ## Dystrybucja, bezpieczeństwo i utrzymanie
 - "Zaprojektować strukturę pakietu .app (Info.plist, zasoby, ikonografia) oraz proces budowy DMG instalacyjnego"
