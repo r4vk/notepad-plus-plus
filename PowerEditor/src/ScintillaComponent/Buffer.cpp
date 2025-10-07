@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <string_view>
 #include <time.h>
 #include <locale>
 #include <sys/stat.h>
@@ -30,6 +31,7 @@
 #include "Lexilla.h"
 #include "Parameters.h"
 #include "Core/DocumentEnvironment.h"
+#include "Core/TextFileAnalyzer.h"
 #include "ScintillaEditView.h"
 #include "EncodingMapper.h"
 #include "uchardet.h"
@@ -66,26 +68,43 @@ const wchar_t* fileNameInvalidChars = L"\\/:*?\"<>|\t\r\n";
 
 namespace // anonymous
 {
-	static EolType getEOLFormatForm(const char* const data, size_t length, EolType defvalue = EolType::osdefault)
-	{
-		assert(length == 0 || (data != nullptr && "invalid buffer for getEOLFormatForm()"));
+        static npp::core::LineEnding toLineEnding(EolType format) noexcept
+        {
+                switch (format)
+                {
+                        case EolType::windows:
+                                return npp::core::LineEnding::Windows;
+                        case EolType::macos:
+                                return npp::core::LineEnding::Mac;
+                        case EolType::unix:
+                                return npp::core::LineEnding::Unix;
+                        default:
+                                return npp::core::LineEnding::Unknown;
+                }
+        }
 
-		for (size_t i = 0; i != length; ++i)
-		{
-			if (data[i] == CR)
-			{
-				if (i + 1 < length && data[i + 1] == LF)
-					return EolType::windows;
+        static EolType toEolType(npp::core::LineEnding lineEnding, EolType fallback) noexcept
+        {
+                switch (lineEnding)
+                {
+                        case npp::core::LineEnding::Windows:
+                                return EolType::windows;
+                        case npp::core::LineEnding::Mac:
+                                return EolType::macos;
+                        case npp::core::LineEnding::Unix:
+                                return EolType::unix;
+                        case npp::core::LineEnding::Unknown:
+                        default:
+                                return fallback;
+                }
+        }
 
-				return EolType::macos;
-			}
-
-			if (data[i] == LF)
-				return EolType::unix;
-		}
-
-		return defvalue; // fallback unknown
-	}
+        static EolType detectEolFormat(const char* data, size_t length, EolType defaultValue)
+        {
+                assert(length == 0 || data != nullptr);
+                const auto detected = npp::core::detectLineEnding(std::string_view(data, length), toLineEnding(defaultValue));
+                return toEolType(detected, defaultValue);
+        }
 
         // local helper to get the current system time in milliseconds since Unix epoch (January 1, 1970)
         uint64_t GetUnixSysTimeInMilliseconds()
@@ -1995,14 +2014,14 @@ bool FileManager::loadFileData(Document doc, int64_t fileSize, const wchar_t * f
 				}
 
 				if (format == EolType::unknown)
-					format = getEOLFormatForm(data, lenFile, EolType::unknown);
+                                  format = detectEolFormat(data, lenFile, EolType::unknown);
 			}
 			else
 			{
 				lenConvert = unicodeConvertor->convert(data, lenFile);
 				_pscratchTilla->execute(SCI_APPENDTEXT, lenConvert, reinterpret_cast<LPARAM>(unicodeConvertor->getNewBuf()));
 				if (format == EolType::unknown)
-					format = getEOLFormatForm(unicodeConvertor->getNewBuf(), unicodeConvertor->getNewSize(), EolType::unknown);
+                                  format = detectEolFormat(unicodeConvertor->getNewBuf(), unicodeConvertor->getNewSize(), EolType::unknown);
 			}
 
 			sciStatus = static_cast<int>(_pscratchTilla->execute(SCI_GETSTATUS));

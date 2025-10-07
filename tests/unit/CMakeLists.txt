@@ -44,6 +44,7 @@ add_executable(npp_platform_tests
     platform/test_system_info.cpp
     platform/test_file_change_poller.cpp
     platform/test_system_services.cpp
+    platform/test_system_services_override.cpp
     platform/test_preferences_store.cpp
     platform/test_preferences_sync.cpp
     platform/test_system_appearance.cpp
@@ -96,3 +97,31 @@ target_include_directories(npp_ui_tests
 )
 
 add_test(NAME npp_ui_tests COMMAND npp_ui_tests)
+
+add_library(npp_core STATIC
+    ${POWEREDITOR_SRC}/Core/TextFileAnalyzer.cpp
+)
+
+target_include_directories(npp_core
+    PUBLIC
+        ${POWEREDITOR_SRC}
+)
+
+add_executable(npp_core_tests
+    core/catch_main.cpp
+    core/test_text_file_analyzer.cpp
+)
+
+target_link_libraries(npp_core_tests
+    PRIVATE
+        npp_core
+)
+
+target_include_directories(npp_core_tests
+    PRIVATE
+        ${POWEREDITOR_SRC}
+        ${NPP_ROOT}/scintilla/test/unit
+        ${NPP_ROOT}/lexilla/test/unit
+)
+
+add_test(NAME npp_core_tests COMMAND npp_core_tests)

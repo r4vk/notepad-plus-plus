@@ -122,5 +122,23 @@ namespace npp::platform
 
         static SystemServices& instance();
     };
+
+    namespace testing
+    {
+        class ScopedSystemServicesOverride
+        {
+        public:
+            explicit ScopedSystemServicesOverride(std::unique_ptr<SystemServices> replacement);
+            ~ScopedSystemServicesOverride();
+
+            ScopedSystemServicesOverride(const ScopedSystemServicesOverride&) = delete;
+            ScopedSystemServicesOverride& operator=(const ScopedSystemServicesOverride&) = delete;
+            ScopedSystemServicesOverride(ScopedSystemServicesOverride&&) noexcept = delete;
+            ScopedSystemServicesOverride& operator=(ScopedSystemServicesOverride&&) noexcept = delete;
+
+        private:
+            SystemServices* override_ = nullptr;
+        };
+    }
 }
 
