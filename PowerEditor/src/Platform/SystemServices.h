@@ -6,6 +6,9 @@
 #include <optional>
 #include <string>
 
+#include "Platform/DocumentOpenQueue.h"
+#include "Platform/SharingCommandQueue.h"
+
 namespace npp::platform
 {
     class PreferencesStore
@@ -120,7 +123,29 @@ namespace npp::platform
 
         virtual PreferencesStore& preferences() = 0;
 
+        virtual DocumentOpenQueue& documentOpenQueue() = 0;
+
+        virtual SharingCommandQueue& sharingCommands() = 0;
+
         static SystemServices& instance();
     };
+
+    namespace testing
+    {
+        class ScopedSystemServicesOverride
+        {
+        public:
+            explicit ScopedSystemServicesOverride(std::unique_ptr<SystemServices> replacement);
+            ~ScopedSystemServicesOverride();
+
+            ScopedSystemServicesOverride(const ScopedSystemServicesOverride&) = delete;
+            ScopedSystemServicesOverride& operator=(const ScopedSystemServicesOverride&) = delete;
+            ScopedSystemServicesOverride(ScopedSystemServicesOverride&&) noexcept = delete;
+            ScopedSystemServicesOverride& operator=(ScopedSystemServicesOverride&&) noexcept = delete;
+
+        private:
+            SystemServices* override_ = nullptr;
+        };
+    }
 }
 

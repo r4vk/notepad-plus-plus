@@ -395,9 +395,21 @@ namespace npp::platform
                 return preferences_;
             }
 
+            DocumentOpenQueue& documentOpenQueue() override
+            {
+                return documentQueue_;
+            }
+
+            SharingCommandQueue& sharingCommands() override
+            {
+                return sharingQueue_;
+            }
+
         private:
             WindowsClipboardService clipboard_;
             WindowsPreferencesStore preferences_;
+            DocumentOpenQueue documentQueue_;
+            SharingCommandQueue sharingQueue_;
         };
     }
 

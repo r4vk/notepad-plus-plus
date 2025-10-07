@@ -38,9 +38,9 @@
 
 ## Integracja z funkcjami systemowymi macOS
 - "Opracować mechanizm rejestrowania rozszerzeń plików i obsługi protokołów poprzez LaunchServices (+)"
-- "Przystosować monitoring zmian plików do FSEvents oraz File System Events API"
-- "Dostosować operacje przeciągnij-i-upuść oraz otwieranie wielu dokumentów za pomocą NSDocumentController"
-- "Zaimplementować integrację z usługami udostępniania (Quick Look, Services menu) oraz otwieranie plików z Finder/spotlight"
+- "Przystosować monitoring zmian plików do FSEvents oraz File System Events API (+) — wdrożono strażnika FSEvents w SystemServices z filtrowaniem subkatalogów"
+- "Dostosować operacje przeciągnij-i-upuść oraz otwieranie wielu dokumentów za pomocą NSDocumentController" — przygotowano kolejkę `DocumentOpenQueue` w `SystemServices` z obsługą wielu ścieżek i testami jednostkowymi, aby umożliwić integrację z NSDocumentController i ujednolicić przetwarzanie żądań otwarcia
+- "Zaimplementować integrację z usługami udostępniania (Quick Look, Services menu) oraz otwieranie plików z Finder/spotlight (+) — dodano kolejkę `SharingCommandQueue` w `SystemServices` wraz z testami i obsługą w override, aby przekazywać żądania Quick Look/Services do warstwy UI"
 - "Przygotować obsługę drukowania i podglądu wydruku w oparciu o NSPrintOperation"
 - "Zaadaptować system powiadomień (toastów) do Notification Center"
 - "Zastąpić funkcje związane z paskiem zadań i ikoną w zasobniku odpowiednikami w Dock i menu statusowym"
@@ -57,14 +57,14 @@
 
 ## Plan testów i jakości
 - "Wybrać framework testów jednostkowych (GoogleTest / Catch2) z konfiguracją multiplatformową i integracją z CTest (+)"
-- "Stworzyć zestaw testów jednostkowych dla modułu zarządzania dokumentami (otwieranie/zapisywanie, kodowania, EOL, BOM)"
+- "Stworzyć zestaw testów jednostkowych dla modułu zarządzania dokumentami (otwieranie/zapisywanie, kodowania, EOL, BOM) (+)"
 - "Przygotować testy jednostkowe dla parsera makr i silnika odtwarzania (w tym obsługa skrótów macOS)"
 - "Zaimplementować testy dla logiki wyszukiwania/zamiany z wykorzystaniem Boost.Regex oraz weryfikacji działań w trybach wielokursorowych"
 - "Dodać testy konfiguracji i serializacji ustawień (TinyXML, pliki konfiguracyjne, migracja z Windows)"
 - "Przygotować testy dla menedżera sesji i przywracania dokumentów po awarii"
 - "Opracować testy jednostkowe dla zarządzania wtyczkami (ładowanie, rejestrowanie poleceń, obsługa błędów)"
 - "Stworzyć testy dla funkcji auto-uzupełniania i listy funkcji (parsowanie, cache, aktualizacja podczas edycji)"
-- "Dodać testy dla warstwy abstrakcji systemowej (np. mocki FileWatcher, Clipboard, Notifications)"
+- "Dodać testy dla warstwy abstrakcji systemowej (np. mocki FileWatcher, Clipboard, Notifications) (+) — dodano mechanizm ScopedSystemServicesOverride i test mocków dla Clipboard oraz FileWatcher"
 - "Zaprojektować testy regresyjne dla konwersji kodowań oraz funkcji formatowania tekstu (indentacja, tabulatory, trim)"
 - "Ustanowić automatyczne testy integracyjne otwierające pliki poprzez NSDocumentController (np. przy użyciu XCTest/UIAutomation) (+)"
 - "Przygotować skrypty do testów wydajnościowych (czas otwierania plików, zużycie pamięci) porównujących wersję Windows i macOS"
