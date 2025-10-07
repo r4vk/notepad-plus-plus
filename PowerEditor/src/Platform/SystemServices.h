@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -131,6 +132,33 @@ namespace npp::platform
         }
     };
 
+    struct PrintDocumentRequest
+    {
+        std::wstring jobTitle;
+        bool showPrintDialog = true;
+        bool printSelectionOnly = false;
+        std::size_t selectionStart = 0u;
+        std::size_t selectionEnd = 0u;
+        bool isRightToLeft = false;
+
+#ifdef _WIN32
+        struct WindowsContext
+        {
+            void* instance = nullptr;
+            void* owner = nullptr;
+            void* editView = nullptr;
+        } windows;
+#endif
+    };
+
+    class PrintService
+    {
+    public:
+        virtual ~PrintService() = default;
+
+        virtual bool printDocument(const PrintDocumentRequest& request) = 0;
+    };
+
     struct StatusItemDescriptor
     {
         std::wstring identifier;
@@ -209,6 +237,8 @@ namespace npp::platform
         virtual NotificationService& notifications() = 0;
 
         virtual StatusItemService& statusItems() = 0;
+
+        virtual PrintService& printing() = 0;
 
         static SystemServices& instance();
     };

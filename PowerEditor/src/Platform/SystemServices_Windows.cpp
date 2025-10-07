@@ -4,11 +4,13 @@
 
 #include "WinControls/ReadDirectoryChanges/ReadDirectoryChanges.h"
 #include "WinControls/TrayIcon/trayIconControler.h"
+#include "ScintillaComponent/Printer.h"
 
 #include <windows.h>
 #include <shellapi.h>
 
 #include <cwchar>
+#include <cstddef>
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
@@ -630,6 +632,36 @@ namespace npp::platform
             CReadDirectoryChanges changes_;
         };
 
+        class WindowsPrintService final : public PrintService
+        {
+        public:
+            bool printDocument(const PrintDocumentRequest& request) override
+            {
+                if (!request.windows.instance || !request.windows.owner || !request.windows.editView)
+                {
+                    return false;
+                }
+
+                auto* view = reinterpret_cast<ScintillaEditView*>(request.windows.editView);
+                if (!view)
+                {
+                    return false;
+                }
+
+                Printer printer;
+                printer.init(static_cast<HINSTANCE>(request.windows.instance),
+                             static_cast<HWND>(request.windows.owner),
+                             view,
+                             request.showPrintDialog,
+                             request.selectionStart,
+                             request.selectionEnd,
+                             request.isRightToLeft);
+
+                const std::size_t printed = printer.doPrint();
+                return printed > 0u;
+            }
+        };
+
         class WindowsSystemServices final : public SystemServices
         {
         public:
@@ -668,6 +700,11 @@ namespace npp::platform
                 return statusItems_;
             }
 
+            PrintService& printing() override
+            {
+                return printing_;
+            }
+
         private:
             WindowsClipboardService clipboard_;
             WindowsPreferencesStore preferences_;
@@ -675,6 +712,7 @@ namespace npp::platform
             SharingCommandQueue sharingQueue_;
             WindowsNotificationService notifications_;
             WindowsStatusItemService statusItems_;
+            WindowsPrintService printing_;
         };
     }
 

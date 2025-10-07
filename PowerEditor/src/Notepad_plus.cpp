@@ -20,7 +20,6 @@
 #include "Notepad_plus.h"
 #include "Notepad_plus_Window.h"
 #include "CustomFileDialog.h"
-#include "Printer.h"
 #include "FileNameStringSplitter.h"
 #include "lesDlgs.h"
 #include "Utf8_16.h"
@@ -2515,13 +2514,28 @@ bool Notepad_plus::findInCurrentFile(bool isEntireDoc)
 
 void Notepad_plus::filePrint(bool showDialog)
 {
-	Printer printer;
+        auto& services = npp::platform::SystemServices::instance();
+        auto& printService = services.printing();
 
-	intptr_t startPos = _pEditView->execute(SCI_GETSELECTIONSTART);
-	intptr_t endPos = _pEditView->execute(SCI_GETSELECTIONEND);
+        npp::platform::PrintDocumentRequest request{};
+        request.showPrintDialog = showDialog;
+        request.selectionStart = static_cast<std::size_t>(_pEditView->execute(SCI_GETSELECTIONSTART));
+        request.selectionEnd = static_cast<std::size_t>(_pEditView->execute(SCI_GETSELECTIONEND));
+        request.printSelectionOnly = request.selectionStart != request.selectionEnd;
+        request.isRightToLeft = _nativeLangSpeaker.isRTL();
 
-	printer.init(_pPublicInterface->getHinst(), _pPublicInterface->getHSelf(), _pEditView, showDialog, startPos, endPos, _nativeLangSpeaker.isRTL());
-	printer.doPrint();
+        if (auto* buffer = _pEditView ? _pEditView->getCurrentBuffer() : nullptr)
+        {
+                request.jobTitle = buffer->getFullPathName();
+        }
+
+#ifdef _WIN32
+        request.windows.instance = _pPublicInterface->getHinst();
+        request.windows.owner = _pPublicInterface->getHSelf();
+        request.windows.editView = _pEditView;
+#endif
+
+        printService.printDocument(request);
 }
 
 int Notepad_plus::doSaveOrNot(const wchar_t* fn, bool isMulti)

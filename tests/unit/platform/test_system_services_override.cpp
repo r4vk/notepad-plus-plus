@@ -267,6 +267,19 @@ namespace
         std::vector<FakeStatusItem*> created;
     };
 
+    class FakePrintService final : public npp::platform::PrintService
+    {
+    public:
+        bool printDocument(const npp::platform::PrintDocumentRequest& request) override
+        {
+            requests.push_back(request);
+            return allowSuccess;
+        }
+
+        bool allowSuccess = true;
+        std::vector<npp::platform::PrintDocumentRequest> requests;
+    };
+
     class FakeSystemServices final : public npp::platform::SystemServices
     {
     public:
@@ -310,6 +323,11 @@ namespace
             return statusItems_;
         }
 
+        npp::platform::PrintService& printing() override
+        {
+            return printService_;
+        }
+
         std::function<std::unique_ptr<npp::platform::FileWatcher>()> fileWatcherFactory;
 
     private:
@@ -319,6 +337,7 @@ namespace
         npp::platform::SharingCommandQueue sharingQueue_;
         FakeNotificationService notifications_;
         FakeStatusItemService statusItems_;
+        FakePrintService printService_;
     };
 }
 
@@ -460,6 +479,23 @@ TEST_CASE("system services override injects clipboard and file watcher mocks", "
         CHECK(trackedStatus->showCount == 1);
         CHECK(trackedStatus->hideCount == 1);
         CHECK(trackedStatus->reinstallCount == 1);
+
+        auto& printService = services.printing();
+        auto* fakePrint = dynamic_cast<FakePrintService*>(&printService);
+        REQUIRE(fakePrint);
+
+        npp::platform::PrintDocumentRequest printRequest{};
+        printRequest.jobTitle = L"UnitTest.txt"s;
+        printRequest.showPrintDialog = false;
+        printRequest.selectionStart = 0u;
+        printRequest.selectionEnd = 0u;
+        printRequest.printSelectionOnly = false;
+
+        CHECK(fakePrint->requests.empty());
+        CHECK(printService.printDocument(printRequest));
+        REQUIRE(fakePrint->requests.size() == 1);
+        CHECK(fakePrint->requests.front().jobTitle == L"UnitTest.txt"s);
+        CHECK_FALSE(fakePrint->requests.front().printSelectionOnly);
     }
 
     auto& fallbackServices = npp::platform::SystemServices::instance();
@@ -490,4 +526,7 @@ TEST_CASE("system services override injects clipboard and file watcher mocks", "
     CHECK_FALSE(fallbackStatus->reinstall());
     CHECK(fallbackStatus->hide());
     CHECK_FALSE(fallbackStatus->isVisible());
+
+    npp::platform::PrintDocumentRequest unsupportedPrint{};
+    CHECK_FALSE(fallbackServices.printing().printDocument(unsupportedPrint));
 }

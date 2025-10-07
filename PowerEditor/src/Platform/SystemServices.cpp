@@ -199,6 +199,26 @@ namespace npp::platform
             std::vector<NotificationRequest> delivered_;
         };
 
+        class StubPrintService final : public PrintService
+        {
+        public:
+            bool printDocument(const PrintDocumentRequest& request) override
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                requests_.push_back(request);
+                return false;
+            }
+
+            const std::vector<PrintDocumentRequest>& requests() const
+            {
+                return requests_;
+            }
+
+        private:
+            std::mutex mutex_;
+            std::vector<PrintDocumentRequest> requests_;
+        };
+
         class StubStatusItem final : public StatusItem
         {
         public:
@@ -876,6 +896,11 @@ namespace npp::platform
                 return statusItems_;
             }
 
+            PrintService& printing() override
+            {
+                return printing_;
+            }
+
         private:
             StubClipboardService clipboard_;
             StubPreferencesStore preferences_;
@@ -883,6 +908,7 @@ namespace npp::platform
             SharingCommandQueue sharingQueue_;
             StubNotificationService notifications_;
             StubStatusItemService statusItems_;
+            StubPrintService printing_;
         };
 
 #ifdef _WIN32
@@ -926,6 +952,11 @@ namespace npp::platform
                 return statusItems_;
             }
 
+            PrintService& printing() override
+            {
+                return printing_;
+            }
+
         private:
             StubClipboardService clipboard_;
             StubPreferencesStore preferences_;
@@ -933,6 +964,7 @@ namespace npp::platform
             SharingCommandQueue sharingQueue_;
             MacNotificationService notifications_;
             StubStatusItemService statusItems_;
+            StubPrintService printing_;
         };
 #endif
 
