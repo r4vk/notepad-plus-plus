@@ -269,12 +269,15 @@ struct Session
 struct CmdLineParams
 {
 	bool _isNoPlugin = false;
-	bool _isReadOnly = false;
-	bool _isNoSession = false;
-	bool _isNoTab = false;
-	bool _isPreLaunch = false;
-	bool _showLoadingTime = false;
-	bool _alwaysOnTop = false;
+        bool _isReadOnly = false;
+        bool _isFullReadOnly = false;
+        bool _isFullReadOnlySavingForbidden = false;
+        bool _isNoSession = false;
+        bool _isNoTab = false;
+        bool _isPreLaunch = false;
+        bool _showLoadingTime = false;
+        bool _showHelp = false;
+        bool _alwaysOnTop = false;
 	intptr_t _line2go   = -1;
 	intptr_t _column2go = -1;
 	intptr_t _pos2go = -1;
@@ -283,10 +286,10 @@ struct CmdLineParams
 	bool _isPointXValid = false;
 	bool _isPointYValid = false;
 
-	bool _isSessionFile = false;
-	bool _isRecursive = false;
-	bool _openFoldersAsWorkspace = false;
-	bool _monitorFiles = false;
+        bool _isSessionFile = false;
+        bool _isRecursive = false;
+        bool _openFoldersAsWorkspace = false;
+        bool _monitorFiles = false;
 
 	LangType _langType = L_EXTERNAL;
 	std::wstring _localizationPath;
@@ -313,12 +316,15 @@ struct CmdLineParams
 // A POD (Plain Old Data) class to send CmdLineParams through WM_COPYDATA and to Notepad_plus::loadCommandlineParams
 struct CmdLineParamsDTO
 {
-	bool _isReadOnly = false;
-	bool _isNoSession = false;
-	bool _isSessionFile = false;
-	bool _isRecursive = false;
-	bool _openFoldersAsWorkspace = false;
-	bool _monitorFiles = false;
+        bool _isReadOnly = false;
+        bool _isFullReadOnly = false;
+        bool _isFullReadOnlySavingForbidden = false;
+        bool _isNoSession = false;
+        bool _isSessionFile = false;
+        bool _isRecursive = false;
+        bool _openFoldersAsWorkspace = false;
+        bool _monitorFiles = false;
+        bool _showHelp = false;
 
 	intptr_t _line2go = 0;
 	intptr_t _column2go = 0;
@@ -331,12 +337,15 @@ struct CmdLineParamsDTO
 	static CmdLineParamsDTO FromCmdLineParams(const CmdLineParams& params)
 	{
 		CmdLineParamsDTO dto;
-		dto._isReadOnly = params._isReadOnly;
-		dto._isNoSession = params._isNoSession;
-		dto._isSessionFile = params._isSessionFile;
-		dto._isRecursive = params._isRecursive;
-		dto._openFoldersAsWorkspace = params._openFoldersAsWorkspace;
-		dto._monitorFiles = params._monitorFiles;
+                dto._isReadOnly = params._isReadOnly;
+                dto._isFullReadOnly = params._isFullReadOnly;
+                dto._isFullReadOnlySavingForbidden = params._isFullReadOnlySavingForbidden;
+                dto._isNoSession = params._isNoSession;
+                dto._isSessionFile = params._isSessionFile;
+                dto._isRecursive = params._isRecursive;
+                dto._openFoldersAsWorkspace = params._openFoldersAsWorkspace;
+                dto._monitorFiles = params._monitorFiles;
+                dto._showHelp = params._showHelp;
 
 		dto._line2go = params._line2go;
 		dto._column2go = params._column2go;
