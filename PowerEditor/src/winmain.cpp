@@ -317,6 +317,8 @@ int getGhostTypingSpeedFromParam(ParamVector & params)
 const wchar_t FLAG_MULTI_INSTANCE[] = L"-multiInst";
 const wchar_t FLAG_NO_PLUGIN[] = L"-noPlugin";
 const wchar_t FLAG_READONLY[] = L"-ro";
+const wchar_t FLAG_FULLREADONLY[] = L"-fullReadOnly";
+const wchar_t FLAG_FULLREADONLY_SAVING_FORBIDDEN[] = L"-fullReadOnlySavingForbidden";
 const wchar_t FLAG_NOSESSION[] = L"-nosession";
 const wchar_t FLAG_NOTABBAR[] = L"-notabbar";
 const wchar_t FLAG_SYSTRAY[] = L"-systemtray";
@@ -598,15 +600,18 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
 	CmdLineParams cmdLineParams;
 	cmdLineParams._isNoTab = isInList(FLAG_NOTABBAR, params);
 	cmdLineParams._isNoPlugin = isInList(FLAG_NO_PLUGIN, params);
-	cmdLineParams._isReadOnly = isInList(FLAG_READONLY, params);
-	cmdLineParams._isNoSession = isInList(FLAG_NOSESSION, params);
-	cmdLineParams._isPreLaunch = isInList(FLAG_SYSTRAY, params);
-	cmdLineParams._alwaysOnTop = isInList(FLAG_ALWAYS_ON_TOP, params);
-	cmdLineParams._showLoadingTime = isInList(FLAG_LOADINGTIME, params);
-	cmdLineParams._isSessionFile = isInList(FLAG_OPENSESSIONFILE, params);
-	cmdLineParams._isRecursive = isInList(FLAG_RECURSIVE, params);
-	cmdLineParams._openFoldersAsWorkspace = isInList(FLAG_OPEN_FOLDERS_AS_WORKSPACE, params);
-	cmdLineParams._monitorFiles = isInList(FLAG_MONITOR_FILES, params);
+        cmdLineParams._isReadOnly = isInList(FLAG_READONLY, params);
+        cmdLineParams._isFullReadOnly = isInList(FLAG_FULLREADONLY, params);
+        cmdLineParams._isFullReadOnlySavingForbidden = isInList(FLAG_FULLREADONLY_SAVING_FORBIDDEN, params);
+        cmdLineParams._isNoSession = isInList(FLAG_NOSESSION, params);
+        cmdLineParams._isPreLaunch = isInList(FLAG_SYSTRAY, params);
+        cmdLineParams._alwaysOnTop = isInList(FLAG_ALWAYS_ON_TOP, params);
+        cmdLineParams._showLoadingTime = isInList(FLAG_LOADINGTIME, params);
+        cmdLineParams._isSessionFile = isInList(FLAG_OPENSESSIONFILE, params);
+        cmdLineParams._isRecursive = isInList(FLAG_RECURSIVE, params);
+        cmdLineParams._openFoldersAsWorkspace = isInList(FLAG_OPEN_FOLDERS_AS_WORKSPACE, params);
+        cmdLineParams._monitorFiles = isInList(FLAG_MONITOR_FILES, params);
+        cmdLineParams._showHelp = showHelp;
 
 	cmdLineParams._langType = getLangTypeFromParam(params);
 	cmdLineParams._localizationPath = getLocalizationPathFromParam(params);
