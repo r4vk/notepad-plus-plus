@@ -45,8 +45,7 @@ OutFile ".\build\npp.${APPVERSION}.Installer.arm64.exe"
 OutFile ".\build\npp.${APPVERSION}.Installer.exe"
 !endif
 
-; Sign both installer and uninstaller
-!finalize        'sign-installers.bat "%1"' = 0     ; %1 is replaced by the installer exe to be signed.
+; Sign uninstaller
 !uninstfinalize  'sign-installers.bat "%1"' = 0     ; %1 is replaced by the uninstaller exe to be signed.
 
 ; ------------------------------------------------------------------------
@@ -98,6 +97,12 @@ page Custom ExtraOptions
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW "un.CheckIfRunning"
 !insertmacro MUI_UNPAGE_INSTFILES
 
+Var diffArchDir2Remove
+Var noUpdater
+Var closeRunningNpp
+Var runNppAfterSilentInstall
+Var relaunchNppAfterSilentInstall
+
 
 !include "nsisInclude\langs4Installer.nsh"
 
@@ -116,11 +121,6 @@ SectionEnd
 InstType "Minimalist"
 
 
-Var diffArchDir2Remove
-Var noUpdater
-Var closeRunningNpp
-Var runNppAfterSilentInstall
-Var relaunchNppAfterSilentInstall
 
 !ifdef ARCH64 || ARCHARM64
 ; this is needed for the 64-bit InstallDirRegKey patch

@@ -275,7 +275,7 @@ void WindowsDlg::init(HINSTANCE hInst, HWND parent, DocTabView *pTab)
 
 void WindowsDlg::init(HINSTANCE hInst, HWND parent)
 {
-	assert(!"Call other initialize method");
+	assert(false && "Call other initialize method");
 	MyBaseClass::init(hInst, parent);
 	_pTab = NULL;
 }
@@ -728,13 +728,9 @@ void WindowsDlg::updateButtonState()
 int WindowsDlg::doDialog()
 {
 	const auto dpiContext = DPIManagerV2::setThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED);
+	const auto result = static_cast<int>(StaticDialog::myCreateDialogBoxIndirectParam(IDD_WINDOWS, false));
+	DPIManagerV2::setThreadDpiAwarenessContext(dpiContext);
 
-	int result = static_cast<int>(DialogBoxParam(_hInst, MAKEINTRESOURCE(IDD_WINDOWS), _hParent, dlgProc, reinterpret_cast<LPARAM>(this)));
-
-	if (dpiContext != NULL)
-	{
-		DPIManagerV2::setThreadDpiAwarenessContext(dpiContext);
-	}
 	return result;
 }
 

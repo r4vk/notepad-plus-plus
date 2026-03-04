@@ -17,6 +17,11 @@
 
 #pragma once
 
+#include <windows.h>
+
+#include <string>
+#include <vector>
+
 #include "DockingDlgInterface.h"
 #include "TreeView.h"
 #include "fileBrowser_rc.h"
@@ -35,8 +40,6 @@
 
 #define FOLDERASWORKSPACE_NODE "FolderAsWorkspace"
 
-
-class TiXmlNode;
 class FileBrowser;
 class FolderInfo;
 
@@ -47,15 +50,13 @@ friend class FolderInfo;
 
 public:
 	FileInfo() = delete; // constructor by default is forbidden
-	FileInfo(const std::wstring & name, FolderInfo *parent) : _name(name), _parent(parent) {};
-	std::wstring getName() const { return _name; };
-	void setName(const std::wstring& name) { _name = name; };
+	explicit FileInfo(const std::wstring& name) noexcept : _name(name) {}
+	const std::wstring& getName() const { return _name; }
+	void setName(const std::wstring& name) { _name = name; }
 
 private:
 	std::wstring _name;
-	FolderInfo *_parent = nullptr;
 };
-
 
 class FolderInfo final
 {
@@ -64,13 +65,13 @@ friend class FolderUpdater;
 
 public:
 	FolderInfo() = delete; // constructor by default is forbidden
-	FolderInfo(const std::wstring & name, FolderInfo *parent) : _name(name), _parent(parent) {};
-	void setRootPath(const std::wstring& rootPath) { _rootPath = rootPath; };
-	std::wstring getRootPath() const { return _rootPath; };
-	void setName(const std::wstring& name) { _name = name; };
-	std::wstring getName() const { return _name; };
-	void addFile(const std::wstring& fn) { _files.push_back(FileInfo(fn, this)); };
-	void addSubFolder(FolderInfo subDirectoryStructure) { _subFolders.push_back(subDirectoryStructure); };
+	FolderInfo(const std::wstring& name, FolderInfo* parent) : _name(name), _parent(parent) {}
+	void setRootPath(const std::wstring& rootPath) { _rootPath = rootPath; }
+	const std::wstring& getRootPath() const { return _rootPath; }
+	void setName(const std::wstring& name) { _name = name; }
+	const std::wstring& getName() const { return _name; }
+	void addFile(const std::wstring& fn) { _files.push_back(FileInfo(fn)); }
+	void addSubFolder(FolderInfo subDirectoryStructure) { _subFolders.push_back(subDirectoryStructure); }
 
 	bool addToStructure(std::wstring & fullpath, std::vector<std::wstring> linarPathArray);
 	bool removeFromStructure(std::vector<std::wstring> linarPathArray);
@@ -91,7 +92,7 @@ enum BrowserNodeType {
 class FolderUpdater {
 friend class FileBrowser;
 public:
-	FolderUpdater(const FolderInfo& fi, FileBrowser *pFileBrowser) : _rootFolder(fi), _pFileBrowser(pFileBrowser) {};
+	FolderUpdater(const FolderInfo& fi, FileBrowser *pFileBrowser) : _rootFolder(fi), _pFileBrowser(pFileBrowser) {}
 	~FolderUpdater() = default;
 
 	void startWatcher();
@@ -102,7 +103,7 @@ private:
 	FileBrowser* _pFileBrowser = nullptr;
 	HANDLE _watchThreadHandle = nullptr;
 	HANDLE _EventHandle = nullptr;
-	static DWORD WINAPI watching(void *param);
+	static DWORD WINAPI watching(void* params);
 
 	static void processChange(DWORD dwAction, std::vector<std::wstring> filesToChange, FolderUpdater* thisFolderUpdater);
 };
@@ -118,20 +119,20 @@ struct SortingData4lParam {
 
 class FileBrowser : public DockingDlgInterface {
 public:
-	FileBrowser(): DockingDlgInterface(IDD_FILEBROWSER) {};
-	~FileBrowser();
+	FileBrowser(): DockingDlgInterface(IDD_FILEBROWSER) {}
+	~FileBrowser() override;
 
 	void setParent(HWND parent2set){
 		_hParent = parent2set;
-	};
+	}
 
 	void setBackgroundColor(COLORREF bgColour) override {
 		TreeView_SetBkColor(_treeView.getHSelf(), bgColour);
-	};
+	}
 
 	void setForegroundColor(COLORREF fgColour) override {
 		TreeView_SetTextColor(_treeView.getHSelf(), fgColour);
-	};
+	}
 
 	std::wstring getNodePath(HTREEITEM node) const;
 	std::wstring getNodeName(HTREEITEM node) const;
@@ -144,7 +145,7 @@ public:
 
 	void deleteAllFromTree() {
 		popupMenuCmd(IDM_FILEBROWSER_REMOVEALLROOTS);
-	};
+	}
 
 	bool renameInTree(const std::wstring& rootPath, HTREEITEM node, const std::vector<std::wstring>& linarPathArrayFrom, const std::wstring & renameTo);
 

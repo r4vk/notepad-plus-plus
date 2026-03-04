@@ -80,6 +80,10 @@
 #define IDC_CHECK_HIDESTATUSBAR                        6134
 #define IDC_CHECK_SHOWONLYPINNEDBUTTON                 6135
 
+#define IDC_TABCOMPACTLABELLEN_STATIC                  6136
+#define IDC_EDIT_TABCOMPACTLABELLEN                    6137
+#define IDC_TABCOMPACTLABELLEN_TIP_STATIC              6138
+
 #define IDD_PREFERENCE_SUB_MULTIINSTANCE               6150
 #define IDC_MULTIINST_GB_STATIC                        6151
 #define IDC_SESSIONININST_RADIO                        6152
@@ -295,7 +299,7 @@
 #define IDC_RADIO_F_MAC                                6404
 #define IDC_ENCODING_STATIC                            6405
 #define IDC_RADIO_ANSI                                 6406
-#define IDC_RADIO_UTF8SANSBOM                          6407
+#define IDC_RADIO_UTF8_NO_BOM                          6407
 #define IDC_RADIO_UTF8                                 6408
 #define IDC_RADIO_UTF16BIG                             6409
 #define IDC_RADIO_UTF16SMALL                           6410
@@ -477,6 +481,7 @@
 #define IDC_FILLFINDWHAT_THRESH_QUESTION_BUTTON        6914
 #define IDC_FILLFINDWHAT_THRESHOLD_EDIT                6915
 #define IDC_FILLFINDWHAT_THRESHOLD_STATIC              6916
+#define IDC_CHECK_FIF_IGNOREOPENEDFILES                6917
 
 #define IDD_PREFERENCE_SUB_DARKMODE                    7100
 

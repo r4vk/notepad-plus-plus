@@ -1,5 +1,5 @@
 // This file is part of Notepad++ project
-// Copyright (C)2024 Don HO <don.h@free.fr>
+// Copyright (C)2025 Don HO <don.h@free.fr>
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -917,7 +917,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 
 		// Standard flags for main parent usually used in NPPN_DARKMODECHANGED.
 		constexpr ULONG dmfHandleChange = 0x0000000CUL;
-	};
+	}
 
 	// ULONG NPPM_DARKMODESUBCLASSANDTHEME(ULONG dmFlags, HWND hwnd)
 	// Add support for generic dark mode to plugin dialog. Subclassing is applied automatically unless DWS_USEOWNDARKMODE flag is used.

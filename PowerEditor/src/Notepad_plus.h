@@ -121,7 +121,7 @@ struct QuoteParams
 {
 	enum Speed { slow = 0, rapid, speedOfLight };
 
-	QuoteParams() {};
+	QuoteParams() {}
 	QuoteParams(const wchar_t* quoter, Speed speed, bool shouldBeTrolling, int encoding, LangType lang, const wchar_t* quote) :
 		_quoter(quoter), _speed(speed), _shouldBeTrolling(shouldBeTrolling), _encoding(encoding), _lang(lang), _quote(quote) {}
 
@@ -132,7 +132,7 @@ struct QuoteParams
 		_encoding = SC_CP_UTF8;
 		_lang = L_TEXT;
 		_quote = nullptr;
-	};
+	}
 
 	const wchar_t* _quoter = nullptr;
 	Speed _speed = rapid;
@@ -266,7 +266,7 @@ public:
 	bool undoStreamComment(bool tryBlockComment = true);
 
 	bool addCurrentMacro();
-	void macroPlayback(Macro);
+	void macroPlayback(Macro macro, std::vector<Document>* pDocs4EndUAIn = nullptr);
 
     void loadLastSession();
 	bool loadSession(Session & session, bool isSnapshotMode = false, const wchar_t* userCreatedSessionName = nullptr);
@@ -289,15 +289,15 @@ public:
 	std::vector<std::wstring> addNppPlugins(const wchar_t *extFilterName, const wchar_t *extFilter);
     int getHtmlXmlEncoding(const wchar_t *fileName) const;
 
-	HACCEL getAccTable() const{
+	HACCEL getAccTable() const {
 		return _accelerator.getAccTable();
-	};
+	}
 
 	bool emergency(const std::wstring& emergencySavedDir);
 
 	Buffer* getCurrentBuffer()	{
 		return _pEditView->getCurrentBuffer();
-	};
+	}
 
 	void launchDocumentBackupTask();
 	int getQuoteIndexFrom(const wchar_t* quoter) const;
@@ -306,7 +306,7 @@ public:
 
 	std::wstring getPluginListVerStr() const {
 		return _pluginsAdminDlg.getPluginListVerStr();
-	};
+	}
 
 	void minimizeDialogs();
 	void restoreMinimizeDialogs();
@@ -314,6 +314,8 @@ public:
 	void refreshDarkMode(bool resetStyle = false);
 
 	void refreshInternalPanelIcons();
+
+	void changeReadOnlyUserModeForAllOpenedTabs(const bool ro);
 
 private:
 	Notepad_plus_Window* _pPublicInterface = nullptr;
@@ -359,6 +361,7 @@ private:
 	FindIncrementDlg _incrementFindDlg;
     AboutDlg _aboutDlg;
 	DebugInfoDlg _debugInfoDlg;
+	CmdLineArgsDlg _cmdLineArgsDlg;
 	RunDlg _runDlg;
 	HashFromFilesDlg _md5FromFilesDlg;
 	HashFromTextDlg _md5FromTextDlg;
@@ -482,7 +485,7 @@ private:
 	bool viewVisible(int whichOne);
 	void hideView(int whichOne);
 	void hideCurrentView();
-	bool bothActive() { return (_mainWindowStatus & WindowBothActive) == WindowBothActive; };
+	bool bothActive() { return (_mainWindowStatus & WindowBothActive) == WindowBothActive; }
 	bool reloadLang();
 	bool loadStyles();
 
@@ -693,7 +696,7 @@ private:
 	static DWORD WINAPI monitorFileOnChange(void * params);
 	struct MonitorInfo final {
 		MonitorInfo(Buffer *buf, HWND nppHandle) :
-			_buffer(buf), _nppHandle(nppHandle) {};
+			_buffer(buf), _nppHandle(nppHandle) {}
 		Buffer *_buffer = nullptr;
 		HWND _nppHandle = nullptr;
 	};
@@ -704,7 +707,7 @@ private:
 
 	HBITMAP generateSolidColourMenuItemIcon(COLORREF colour);
 
-	void clearChangesHistory();
+	void clearChangesHistory(int iView);
 	void changedHistoryGoTo(int idGoTo);
 
 	HMENU createMenuFromMenu(HMENU hSourceMenu, const std::vector<int>& commandIds);

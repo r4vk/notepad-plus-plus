@@ -18,6 +18,8 @@
 # definitions
 #
 
+MAKEFILE_ABS_DIR = $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+
 GCC_DIRECTORY := ../gcc
 GCC_EXCLUDE := $(GCC_DIRECTORY)/gcc-%
 SRC_DIRECTORY := ../src
@@ -38,15 +40,18 @@ LEXILLA_TARGET := liblexilla.a
 
 ifeq ($(CXX),clang++)
   CXX := $(CROSS_COMPILE)clang++
+  SCI_CLANG := 1
+  COMPILER_SUFFIX := clang.
 else
   CXX := $(CROSS_COMPILE)g++
+  COMPILER_SUFFIX := gcc.
 endif
 
-CXXFLAGS := -include $(GCC_DIRECTORY)/gcc-fixes.h -std=c++20
+CXXFLAGS := -include $(GCC_DIRECTORY)/gcc-fixes.h -std=c++20 -Wpedantic -Wall -Wextra -Wconversion
 RC := $(CROSS_COMPILE)windres
 RCFLAGS := --codepage=65001
 CPP_PATH := $(SCINTILLA_DIRECTORY)/include $(LEXILLA_DIRECTORY)/include
-CPP_DEFINE := UNICODE _UNICODE OEMRESOURCE NOMINMAX _WIN32_WINNT=_WIN32_WINNT_WIN7 NTDDI_VERSION=NTDDI_WIN7 TIXML_USE_STL TIXMLA_USE_STL
+CPP_DEFINE := UNICODE _UNICODE OEMRESOURCE NOMINMAX _WIN32_WINNT=_WIN32_WINNT_WIN7 NTDDI_VERSION=NTDDI_WIN7
 LD := $(CXX)
 LDFLAGS := -municode -mwindows
 LD_PATH :=
@@ -58,31 +63,54 @@ SUBMAKEFLAGS := -O --no-print-directory
 ifeq "$(filter-out 0,$(DEBUG))" ""
 BUILD_TYPE := release
 BUILD_SUFFIX :=
-CXXFLAGS += -O3 -Wconversion
+CXXFLAGS += -O3
 CPP_DEFINE += NDEBUG
 LDFLAGS += -s
 else
 BUILD_TYPE := debug
 BUILD_SUFFIX := -debug
-CXXFLAGS += -Og -g -Wpedantic -Wall -Wextra -Wno-cast-function-type -Wno-overloaded-virtual -Wconversion
-CPP_DEFINE += DEBUG
+CXXFLAGS += -Og \
+            -g \
+            -Wcast-align \
+            -Wextra-semi \
+            -Wformat=2 \
+            -Wmisleading-indentation \
+            -Wunused
+CPP_DEFINE += DEBUG _DEBUG
 endif
 
 ifeq ($(CXX),clang++)
-  CXXFLAGS += -Wimplicit-fallthrough \
+  CXXFLAGS += -Wextra-semi \
               -Wformat=2 \
+              -Wimplicit-fallthrough \
+              -Wmisleading-indentation \
+              -Wunused \
               -Wno-c++98-compat \
               -Wno-c++98-compat-pedantic \
-              -Wno-reserved-id-macro \
-              -Wno-pragma-pack \
-              -Wno-unknown-pragmas \
-              -Wno-unused-command-line-argument \
-              -Wno-overloaded-virtual \
-              -Wno-sign-conversion \
               -Wno-c99-extensions \
-              -Wno-deprecated-declarations
-else ifeq ($(BUILD_TYPE),release)
-  CXXFLAGS += -Wno-alloc-size-larger-than
+              -Wno-cast-align \
+              -Wno-cast-function-type-strict \
+              -Wno-covered-switch-default \
+              -Wno-deprecated-declarations \
+              -Wno-exit-time-destructors \
+              -Wno-global-constructors \
+              -Wno-nested-anon-types \
+              -Wno-overloaded-virtual \
+              -Wno-padded \
+              -Wno-pragma-pack \
+              -Wno-reserved-id-macro \
+              -Wno-reserved-identifier \
+              -Wno-nrvo \
+              -Wno-sign-conversion \
+              -Wno-switch-default \
+              -Wno-unsafe-buffer-usage \
+              -Wno-unsafe-buffer-usage-in-libc-call \
+              -Wno-unused-command-line-argument \
+              -Wno-weak-vtables
+else
+  CXXFLAGS += -Wno-cast-function-type \
+              -Wno-overloaded-virtual \
+              -Wno-system-headers
 endif
 
 ifneq "$(filter-out 0,$(CLANGANALYZE))" ""
@@ -101,7 +129,7 @@ TARGET_CPU := $(firstword $(subst -, ,$(shell $(CXX) -dumpmachine)))
 ifeq "$(TARGET_CPU)" ""
 $(error TARGET_CPU detection failed)
 endif
-ifneq "$(filter-out x86_64 i686,$(TARGET_CPU))" ""
+ifneq "$(filter-out x86_64 i686 aarch64,$(TARGET_CPU))" ""
 $(error $(TARGET_CPU) build is unsupported)
 endif
 ifeq "$(TARGET_CPU)" "i686"
@@ -124,7 +152,7 @@ export RC += -Fpe-x86-64
 endif
 
 # define target and build directories and update dependent variables
-TARGET_DIRECTORY := bin.$(TARGET_CPU)$(BUILD_SUFFIX)
+TARGET_DIRECTORY := bin.$(COMPILER_SUFFIX)$(TARGET_CPU)$(BUILD_SUFFIX)
 BUILD_DIRECTORY := $(TARGET_DIRECTORY).build
 
 TARGET_BINARY := $(TARGET_DIRECTORY)/$(TARGET_BINARY)
@@ -184,7 +212,7 @@ CPDIR := cp -r
 RMDIR := rm -rf
 CP := cp
 RM := rm -f
-PREBUILD_EVENT_CMD := cmd //C "cd PowerEditor/src && NppLibsVersionH-generator.bat"
+PREBUILD_EVENT_CMD := cmd //C "$(MAKEFILE_ABS_DIR)/../src/NppLibsVersionH-generator.bat"
 normalize-path = $1
 else ifneq "$(wildcard $(dir $(SHELL))ls.exe)" ""
 # a Windows system with a proper shell
@@ -196,7 +224,7 @@ CPDIR := $(SHELL_DIRECTORY)cp.exe -r
 RMDIR := $(SHELL_DIRECTORY)rm.exe -rf
 CP := $(SHELL_DIRECTORY)cp.exe
 RM := $(SHELL_DIRECTORY)rm.exe -f
-PREBUILD_EVENT_CMD := cmd //C "cd PowerEditor/src && NppLibsVersionH-generator.bat"
+PREBUILD_EVENT_CMD := cmd //C "$(MAKEFILE_ABS_DIR)/../src/NppLibsVersionH-generator.bat"
 normalize-path = $1
 else
 # a standard Windows system
@@ -205,7 +233,7 @@ CPDIR := xcopy /q /e /i /y
 RMDIR := rmdir /q /s
 CP := copy /y
 RM := del /q
-PREBUILD_EVENT_CMD := cd ..\src && NppLibsVersionH-generator.bat
+PREBUILD_EVENT_CMD := "$(MAKEFILE_ABS_DIR)\..\src\NppLibsVersionH-generator.bat"
 normalize-path = $(subst /,\,$1)
 endif
 
@@ -223,6 +251,23 @@ CXX_TARGETS := $(patsubst %.cpp,$(BUILD_DIRECTORY)/%.o,$(sort $(filter %.cpp,$(G
 
 vpath %.rc $(GCC_DIRECTORY) $(SRC_DIRECTORY)
 RC_TARGETS := $(patsubst %.rc,$(BUILD_DIRECTORY)/%.res,$(sort $(filter %.rc,$(GCC_SUBTREE) $(SRC_SUBTREE))))
+
+# for 3rd-party cpp files use only basic warning flags, for headers supress warnings
+THIRD_DIRS := $(SRC_DIRECTORY)/json \
+              $(SRC_DIRECTORY)/pugixml \
+              $(SRC_DIRECTORY)/uchardet \
+              $(SRC_DIRECTORY)/MISC/crc16 \
+              $(SRC_DIRECTORY)/MISC/md5 \
+              $(SRC_DIRECTORY)/MISC/sha1 \
+              $(SRC_DIRECTORY)/MISC/sha2 \
+              $(SRC_DIRECTORY)/MISC/sha512 \
+              $(SCINTILLA_DIRECTORY)/include \
+              $(LEXILLA_DIRECTORY)/include
+
+THIRD_ISYSTEM := $(addprefix -isystem ,$(THIRD_DIRS))
+CXXFLAGS += $(THIRD_ISYSTEM)
+
+thirdparty_flags = $(if $(filter $(foreach d,$(THIRD_DIRS),$(d)/%),$(1)), -w -Wpedantic -Wall -Wextra,)
 
 #
 # actions
@@ -258,17 +303,17 @@ $(LEXILLA_TARGET): .force
 endif
 
 $(SCINTILLA_TARGET): | $(BUILD_DIRECTORY) $(SCINTILLA_BUILD_DIRECTORY)
-	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(SCINTILLA_DIRECTORY)/win32 -f makefile -f ../../boostregex/nppSpecifics_mingw.mak DIR_O=$(SCINTILLA_BUILD_PATH) LIBSCI=$(SCINTILLA_TARGET_PATH) $(SCINTILLA_TARGET_PATH)
+	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(SCINTILLA_DIRECTORY)/win32 -f makefile -f ../../boostregex/nppSpecifics_mingw.mak DIR_O=$(SCINTILLA_BUILD_PATH) LIBSCI=$(SCINTILLA_TARGET_PATH) $(SCINTILLA_TARGET_PATH) CLANG=$(SCI_CLANG)
 
 $(LEXILLA_TARGET): | $(BUILD_DIRECTORY) $(LEXILLA_BUILD_DIRECTORY)
-	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(LEXILLA_DIRECTORY)/src DIR_O=$(LEXILLA_BUILD_PATH) LIBLEXILLA=$(LEXILLA_TARGET_PATH) $(LEXILLA_TARGET_PATH)
+	$(AT)$(MAKE) $(SUBMAKEFLAGS) -C $(LEXILLA_DIRECTORY)/src DIR_O=$(LEXILLA_BUILD_PATH) LIBLEXILLA=$(LEXILLA_TARGET_PATH) $(LEXILLA_TARGET_PATH) CLANG=$(SCI_CLANG)
 
 binary: $(TARGET_BINARY) data
 	@echo +++ $(TARGET_CPU) $(BUILD_TYPE) : $(CURDIR)/$(TARGET_BINARY) +++
 
 $(CXX_TARGETS): $(BUILD_DIRECTORY)/%.o: %.cpp | $(BUILD_DIRECTORY)
 	@echo + compiling $<
-	$(AT)$(CXX) $(CXXFLAGS) $(addprefix -I,$(CPP_PATH)) $(addprefix -D,$(CPP_DEFINE)) -MMD -c -o $@ $<
+	$(AT)$(CXX) $(CXXFLAGS) $(call thirdparty_flags,$<) $(addprefix -I,$(CPP_PATH)) $(addprefix -D,$(CPP_DEFINE)) -MMD -c -o $@ $<
 
 $(RC_TARGETS): $(BUILD_DIRECTORY)/%.res: %.rc | $(BUILD_DIRECTORY)
 	@echo + compiling $<

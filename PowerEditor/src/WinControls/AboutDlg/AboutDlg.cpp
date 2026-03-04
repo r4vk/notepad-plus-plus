@@ -221,6 +221,18 @@ intptr_t CALLBACK DebugInfoDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM 
 			_debugInfoStr += wmc.char2wchar(NPP_BOOST_REGEX_VERSION, CP_ACP);
 			_debugInfoStr += L"\r\n";
 
+#if defined(PUGIXML_VERSION)
+			// pugixml version
+			_debugInfoStr += L"pugixml included: ";
+			_debugInfoStr += std::to_wstring(PUGIXML_VERSION / 1000) + L"." + std::to_wstring((PUGIXML_VERSION % 1000) / 10);
+			_debugInfoStr += L"\r\n";
+#endif
+
+			// JSON version
+			_debugInfoStr += L"nlohmann JSON included: ";
+			_debugInfoStr += to_wstring(NLOHMANN_JSON_VERSION_MAJOR) + L"." + to_wstring(NLOHMANN_JSON_VERSION_MINOR) + L"." + to_wstring(NLOHMANN_JSON_VERSION_PATCH);
+			_debugInfoStr += L"\r\n";
+
 			// Binary path
 			_debugInfoStr += L"Path: ";
 			wchar_t nppFullPath[MAX_PATH]{};
@@ -421,7 +433,7 @@ intptr_t CALLBACK DebugInfoDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM 
 			{
 				constexpr size_t bufSizeACP = 32;
 				wchar_t szACP[bufSizeACP] = { '\0' };
-				swprintf(szACP, bufSizeACP, L"%u", ::GetACP());
+				swprintf(szACP, bufSizeACP, L"%u", nppParam.currentSystemCodepage());
 				_debugInfoStr += L"Current ANSI codepage: ";
  				_debugInfoStr += szACP;
 				_debugInfoStr += L"\r\n";
@@ -551,18 +563,148 @@ void DebugInfoDlg::refreshDebugInfo()
 }
 
 
+const wchar_t COMMAND_ARG_HELP[] = L"Usage:\r\n\
+\r\n\
+notepad++ [--help] [-multiInst] [-noPlugin] [-lLanguage] [-udl=\"My UDL Name\"]\r\n\
+[-LlangCode] [-nLineNumber] [-cColumnNumber] [-pPosition] [-xLeftPos] [-yTopPos]\r\n\
+[-monitor] [-nosession] [-notabbar] [-systemtray] [-loadingTime] [-alwaysOnTop]\r\n\
+[-ro] [-fullReadOnly] [-fullReadOnlySavingForbidden] [-openSession] [-r]\r\n\
+[-qn=\"Easter egg name\" | -qt=\"a text to display.\" | -qf=\"D:\\my quote.txt\"]\r\n\
+[-qSpeed1|2|3] [-quickPrint] [-settingsDir=\"d:\\your settings dir\\\"]\r\n\
+[-openFoldersAsWorkspace]  [-titleAdd=\"additional title bar text\"]\r\n\
+[filePath]\r\n\
+\r\n\
+--help: This help message\r\n\
+-multiInst: Launch another Notepad++ instance\r\n\
+-noPlugin: Launch Notepad++ without loading any plugin\r\n\
+-l: Open file or Ghost type with syntax highlighting of choice\r\n\
+-udl=\"My UDL Name\": Open file by applying User Defined Language\r\n\
+-L: Apply indicated localization, langCode is browser language code\r\n\
+-n: Scroll to indicated line on filePath\r\n\
+-c: Scroll to indicated column on filePath\r\n\
+-p: Scroll to indicated position on filePath\r\n\
+-x: Move Notepad++ to indicated left side position on the screen\r\n\
+-y: Move Notepad++ to indicated top position on the screen\r\n\
+-monitor: Open file with file monitoring enabled\r\n\
+-nosession: Launch Notepad++ without previous session\r\n\
+-notabbar: Launch Notepad++ without tab bar\r\n\
+-ro: Make the filePath read-only\r\n\
+-fullReadOnly: Open all files read-only by default, toggling the R/O off and saving is allowed\r\n\
+-fullReadOnlySavingForbidden: Open all files read-only by default, toggling the R/O off and saving is disabled\r\n\
+-systemtray: Launch Notepad++ directly in system tray\r\n\
+-loadingTime: Display Notepad++ loading time\r\n\
+-alwaysOnTop: Make Notepad++ always on top\r\n\
+-openSession: Open a session. filePath must be a session file\r\n\
+-r: Open files recursively. This argument will be ignored if filePath contains no wildcard character\r\n\
+-qn=\"Easter egg name\": Ghost type easter egg via its name\r\n\
+-qt=\"text to display.\": Ghost type the given text\r\n\
+-qf=\"D:\\my quote.txt\": Ghost type a file content via the file path\r\n\
+-qSpeed: Ghost typing speed. Value from 1 to 3 for slow, fast and fastest\r\n\
+-quickPrint: Print the file given as argument then quit Notepad++\r\n\
+-settingsDir=\"d:\\your settings dir\\\": Override the default settings dir\r\n\
+-openFoldersAsWorkspace: open filePath of folder(s) as workspace\r\n\
+-titleAdd=\"string\": add string to Notepad++ title bar\r\n\
+filePath: file or folder name to open (absolute or relative path name)\r\n\
+";
+
+void CmdLineArgsDlg::doDialog()
+{
+	if (!isCreated())
+		create(IDD_COMMANDLINEARGSBOX);
+
+	::SetDlgItemText(_hSelf, IDC_COMMANDLINEARGS_EDIT, COMMAND_ARG_HELP);
+
+	// Create DPI-aware monospace font
+	NONCLIENTMETRICS ncm{};
+	ncm.cbSize = sizeof(NONCLIENTMETRICS);
+	SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &ncm, 0);
+
+	// Use the system font height but change to monospace
+	hCmdLineEditFont = CreateFont(
+		ncm.lfMessageFont.lfHeight,  // DPI-aware height from system
+		0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN,
+		L"Lucida Console");
+
+	if (hCmdLineEditFont)
+		SendDlgItemMessage(_hSelf, IDC_COMMANDLINEARGS_EDIT, WM_SETFONT, (WPARAM)hCmdLineEditFont, TRUE);
+
+	moveForDpiChange();
+	goToCenter(SWP_SHOWWINDOW | SWP_NOSIZE);
+}
+
+intptr_t CALLBACK CmdLineArgsDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
+{
+	switch (message)
+	{
+		case WM_INITDIALOG:
+		{
+			NppDarkMode::autoSubclassAndThemeChildControls(_hSelf);
+			return TRUE;
+		}
+
+		case WM_CTLCOLORDLG:
+		case WM_CTLCOLORSTATIC:
+		{
+			return NppDarkMode::onCtlColorDlg(reinterpret_cast<HDC>(wParam));
+		}
+
+		case WM_PRINTCLIENT:
+		{
+			if (NppDarkMode::isEnabled())
+			{
+				return TRUE;
+			}
+			break;
+		}
+
+		case NPPM_INTERNAL_REFRESHDARKMODE:
+		{
+			NppDarkMode::autoThemeChildControls(_hSelf);
+			return TRUE;
+		}
+
+		case WM_DPICHANGED:
+		{
+			_dpiManager.setDpiWP(wParam);
+			setPositionDpi(lParam);
+			getWindowRect(_rc);
+
+			return TRUE;
+		}
+
+		case WM_COMMAND:
+		{
+			switch (wParam)
+			{
+				case IDCANCEL:
+				case IDOK:
+					display(false);
+					return TRUE;
+
+				default:
+					break;
+			}
+			break;
+		}
+
+		case WM_DESTROY:
+		{
+			if (hCmdLineEditFont)
+			{
+				DeleteObject(hCmdLineEditFont);
+				hCmdLineEditFont = nullptr;
+			}
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
 void DoSaveOrNotBox::doDialog(bool isRTL)
 {
-
-	if (isRTL)
-	{
-		DLGTEMPLATE *pMyDlgTemplate = NULL;
-		HGLOBAL hMyDlgTemplate = makeRTLResource(IDD_DOSAVEORNOTBOX, &pMyDlgTemplate);
-		::DialogBoxIndirectParam(_hInst, pMyDlgTemplate, _hParent, dlgProc, reinterpret_cast<LPARAM>(this));
-		::GlobalFree(hMyDlgTemplate);
-	}
-	else
-		::DialogBoxParam(_hInst, MAKEINTRESOURCE(IDD_DOSAVEORNOTBOX), _hParent, dlgProc, reinterpret_cast<LPARAM>(this));
+	StaticDialog::myCreateDialogBoxIndirectParam(IDD_DOSAVEORNOTBOX, isRTL);
 }
 
 void DoSaveOrNotBox::changeLang()
@@ -674,16 +816,7 @@ intptr_t CALLBACK DoSaveOrNotBox::run_dlgProc(UINT message, WPARAM wParam, LPARA
 
 void DoSaveAllBox::doDialog(bool isRTL)
 {
-
-	if (isRTL)
-	{
-		DLGTEMPLATE* pMyDlgTemplate = NULL;
-		HGLOBAL hMyDlgTemplate = makeRTLResource(IDD_DOSAVEALLBOX, &pMyDlgTemplate);
-		::DialogBoxIndirectParam(_hInst, pMyDlgTemplate, _hParent, dlgProc, reinterpret_cast<LPARAM>(this));
-		::GlobalFree(hMyDlgTemplate);
-	}
-	else
-		::DialogBoxParam(_hInst, MAKEINTRESOURCE(IDD_DOSAVEALLBOX), _hParent, dlgProc, reinterpret_cast<LPARAM>(this));
+	StaticDialog::myCreateDialogBoxIndirectParam(IDD_DOSAVEALLBOX, isRTL);
 }
 
 void DoSaveAllBox::changeLang()

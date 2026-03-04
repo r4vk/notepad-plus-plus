@@ -51,10 +51,11 @@ enum BufferStatusInfo {
 };
 
 enum SavingStatus {
-	SaveOK             = 0,
-	SaveOpenFailed     = 1,
-	SaveWritingFailed  = 2,
-	NotEnoughRoom      = 3
+	SaveOK                      = 0,
+	SaveOpenFailed              = 1,
+	SaveWritingFailed           = 2,
+	NotEnoughRoom               = 3,
+	FullReadOnlySavingForbidden = 4
 };
 
 struct BufferViewInfo {
@@ -62,7 +63,7 @@ struct BufferViewInfo {
 	int _iView = 0;
 
 	BufferViewInfo() = delete;
-	BufferViewInfo(BufferID buf, int view) : _bufID(buf), _iView(view) {};
+	BufferViewInfo(BufferID buf, int view) : _bufID(buf), _iView(view) {}
 };
 
 const wchar_t UNTITLED_STR[] = L"new ";
@@ -75,7 +76,7 @@ public:
 
 	void checkFilesystemChanges(bool bCheckOnlyCurrentBuffer);
 
-	size_t getNbBuffers() const { return _nbBufs; };
+	size_t getNbBuffers() const { return _nbBufs; }
 	size_t getNbDirtyBuffers() const;
 	int getBufferIndexByID(BufferID id);
 	Buffer * getBufferByIndex(size_t index);
@@ -110,17 +111,22 @@ public:
 	static FileManager& getInstance() {
 		static FileManager instance;
 		return instance;
-	};
+	}
 	int getFileNameFromBuffer(BufferID id, wchar_t * fn2copy);
 	size_t docLength(Buffer * buffer) const;
 	void removeHotSpot(Buffer * buffer) const;
 	size_t nextUntitledNewNumber() const;
 
+	void enableAutoDetectEncoding4Loading() { isAutoDetectEncodingDisabled4Loading = false; }
+	void disableAutoDetectEncoding4Loading() { isAutoDetectEncodingDisabled4Loading = true; } // Disable the encoding auto-detection on loading file while switching among the different encoding.
+	                                                                                          // The value of isAutoDetectEncodingDisabled4Loading will be restored to false after each file loading 
+	                                                                                          // to restore the encoding auto-detection ability for other file loading operations. 
+
 private:
 	struct LoadedFileFormat {
 		LoadedFileFormat() = default;
 		LangType _language = L_TEXT;
-		int _encoding = 0;
+		int _encoding = uni8Bit;
 		EolType _eolFormat = EolType::osdefault;
 	};
 
@@ -136,6 +142,8 @@ private:
 	FileManager& operator=(FileManager&&) = delete;
 
 	int detectCodepage(char* buf, size_t len);
+	bool isAutoDetectEncodingDisabled4Loading = false;
+
 	bool loadFileData(Document doc, int64_t fileSize, const wchar_t* filename, char* buffer, Utf8_16_Read* UnicodeConvertor, LoadedFileFormat& fileFormat);
 	LangType detectLanguageFromTextBeginning(const unsigned char *data, size_t dataLen);
 
@@ -170,6 +178,10 @@ public:
 
 	const wchar_t * getFileName() const { return _fileName; }
 
+	const wchar_t* getCompactFileName() const { return _compactFileName.c_str(); }
+
+	void refreshCompactFileName();
+
 	void normalizeTabName(std::wstring& tabName);
 
 	BufferID getID() const { return _id; }
@@ -202,11 +214,7 @@ public:
 	}
 
 	bool getUserReadOnly() const { return _isUserReadOnly; }
-
-	void setUserReadOnly(bool ro) {
-		_isUserReadOnly = ro;
-		doNotify(BufferChangeReadonly);
-	}
+	void setUserReadOnly(bool ro);
 
 	EolType getEolFormat() const { return _eolFormat; }
 
@@ -243,25 +251,25 @@ public:
 
 	const wchar_t * getUserDefineLangName() const	{ return _userLangExt.c_str(); }
 
-	const wchar_t * getCommentLineSymbol() const {
-		const Lang *l = getCurrentLang();
+	const char* getCommentLineSymbol() const {
+		const Lang* l = getCurrentLang();
 		if (!l)
-			return NULL;
-		return l->_pCommentLineSymbol;
+			return nullptr;
+		return l->_pCommentLineSymbol.c_str();
 	}
 
-	const wchar_t * getCommentStart() const {
-		const Lang *l = getCurrentLang();
+	const char* getCommentStart() const {
+		const Lang* l = getCurrentLang();
 		if (!l)
-			return NULL;
-		return l->_pCommentStart;
+			return nullptr;
+		return l->_pCommentStart.c_str();
 	}
 
-	const wchar_t * getCommentEnd() const {
-		const Lang *l = getCurrentLang();
+	const char* getCommentEnd() const {
+		const Lang* l = getCurrentLang();
 		if (!l)
-			return NULL;
-		return l->_pCommentEnd;
+			return nullptr;
+		return l->_pCommentEnd.c_str();
 	}
 
 	bool getNeedsLexing() const { return _needLexer; }
@@ -349,23 +357,23 @@ public:
 	void startMonitoring() {
 		_isMonitoringOn = true;
 		_eventHandle = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
-	};
+	}
 
-	HANDLE getMonitoringEvent() const { return _eventHandle; };
+	HANDLE getMonitoringEvent() const { return _eventHandle; }
 
 	void stopMonitoring() {
 		_isMonitoringOn = false;
 		::SetEvent(_eventHandle);
 		::CloseHandle(_eventHandle);
-	};
+	}
 
-	bool isMonitoringOn() const { return _isMonitoringOn; };
+	bool isMonitoringOn() const { return _isMonitoringOn; }
 	void updateTimeStamp();
 	void reload();
-	void setMapPosition(const MapPosition & mapPosition) { _mapPosition = mapPosition; };
-	MapPosition getMapPosition() const { return _mapPosition; };
+	void setMapPosition(const MapPosition& mapPosition) { _mapPosition = mapPosition; }
+	MapPosition getMapPosition() const { return _mapPosition; }
 
-	void langHasBeenSetFromMenu() { _hasLangBeenSetFromMenu = true; };
+	void langHasBeenSetFromMenu() { _hasLangBeenSetFromMenu = true; }
 
 	bool allowBraceMach() const;
 	bool allowAutoCompletion() const;
@@ -374,17 +382,17 @@ public:
 
 	void setDocColorId(int idx) {
 		_docColorId = idx;
-	};
+	}
 
 	int getDocColorId() {
 		return _docColorId;
-	};
+	}
 
-	bool isRTL() const { return _isRTL; };
-	void setRTL(bool isRTL) { _isRTL = isRTL; };
+	bool isRTL() const { return _isRTL; }
+	void setRTL(bool isRTL) { _isRTL = isRTL; }
 
-	bool isPinned() const { return _isPinned; };
-	void setPinned(bool isPinned) { _isPinned = isPinned; };
+	bool isPinned() const { return _isPinned; }
+	void setPinned(bool isPinned) { _isPinned = isPinned; }
 
 private:
 	int indexOfReference(const ScintillaEditView * identifier) const;
@@ -412,8 +420,12 @@ private:
 	std::wstring _userLangExt; // it's useful if only (_lang == L_USER)
 	bool _isDirty = false;
 	EolType _eolFormat = EolType::osdefault;
-	UniMode _unicodeMode = uniUTF8;
+
+	// if _encoding == -1, then _unicodeMode is used.
+	// otherwise _encoding is used.
 	int _encoding = -1;
+	UniMode _unicodeMode = uniUTF8;
+
 	bool _isUserReadOnly = false;
 	bool _isFromNetwork = false;
 	bool _needLexer = false; // new buffers do not need lexing, Scintilla takes care of that
@@ -433,6 +445,7 @@ private:
 	bool _isFileReadOnly = false;
 	std::wstring _fullPathName;
 	wchar_t * _fileName = nullptr; // points to filename part in _fullPathName
+	std::wstring _compactFileName; // shortened filename form of the _fileName with possible ellipsis (...) at the end
 	bool _needReloading = false; // True if Buffer needs to be reloaded on activation
 
 	std::wstring _tabCreatedTimeString;

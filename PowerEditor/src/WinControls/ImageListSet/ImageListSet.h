@@ -17,28 +17,29 @@
 
 #pragma once
 
-#include <vector>
 #include <windows.h>
+
 #include <commctrl.h>
 
-#define	IDI_SEPARATOR_ICON -1
+#include <vector>
+#include <utility>
 
 class IconList
 {
 public :
 	IconList() = default;
 	void init(HINSTANCE hInst, int iconSize);
-	void create(int iconSize, HINSTANCE hInst, int *iconIDArray, int iconIDArraySize);
+	void create(int iconSize, HINSTANCE hInst, const int* iconIDArray, int iconIDArraySize);
 
 	void destroy() {
 		ImageList_Destroy(_hImglst);
-	};
+	}
 
 	void removeAll() {
 		ImageList_RemoveAll(_hImglst);
-	};
+	}
 
-	HIMAGELIST getHandle() const {return _hImglst;};
+	HIMAGELIST getHandle() const { return _hImglst; }
 	void addIcon(int iconID, int cx = 16, int cy = 16, int failIconID = -1, bool isToolbarNormal = false) const;
 	void addIcon(HICON hIcon) const;
 
@@ -47,7 +48,7 @@ public :
 private :
 	HIMAGELIST _hImglst = nullptr;
 	HINSTANCE _hInst = nullptr;
-	int *_pIconIDArray = nullptr;
+	const int* _pIconIDArray = nullptr;
 	int _iconIDArraySize = 0;
 	int _iconSize = 0;
 
@@ -56,7 +57,7 @@ private :
 };
 
 struct ToolBarButtonUnit
-{	
+{
 	int _cmdID;
 
 	int _defaultIcon;
@@ -83,67 +84,73 @@ struct DynamicCmdIcoBmp {
 
 typedef std::vector<ToolBarButtonUnit> ToolBarIconIDs;
 
-// Light Mode list
-const int HLIST_DEFAULT = 0;
-const int HLIST_DISABLE = 1;
-const int HLIST_DEFAULT2 = 2;
-const int HLIST_DISABLE2 = 3;
-// Dark Mode list
-const int HLIST_DEFAULT_DM = 4;
-const int HLIST_DISABLE_DM = 5;
-const int HLIST_DEFAULT_DM2 = 6;
-const int HLIST_DISABLE_DM2 = 7;
+enum ToolbarIconList
+{
+	// Light Mode list
+
+	HLIST_DEFAULT,
+	HLIST_DISABLE,
+	HLIST_DEFAULT2,
+	HLIST_DISABLE2,
+
+	// Dark Mode list
+
+	HLIST_DEFAULT_DM,
+	HLIST_DISABLE_DM,
+	HLIST_DEFAULT_DM2,
+	HLIST_DISABLE_DM2
+};
 
 class ToolBarIcons
 {
-public :
+public:
 	ToolBarIcons() = default;
 
-	void init(ToolBarButtonUnit *buttonUnitArray, int arraySize, const std::vector<DynamicCmdIcoBmp>& cmds2add);
+	void init(const ToolBarButtonUnit* buttonUnitArray, int arraySize, const std::vector<DynamicCmdIcoBmp>& cmds2add);
 	void create(HINSTANCE hInst, int iconSize);
 	void destroy();
 
 	HIMAGELIST getDefaultLst() const {
 		return _iconListVector[HLIST_DEFAULT].getHandle();
-	};
+	}
 
 	HIMAGELIST getDisableLst() const {
 		return _iconListVector[HLIST_DISABLE].getHandle();
-	};
+	}
 
 	HIMAGELIST getDefaultLstSet2() const {
 		return _iconListVector[HLIST_DEFAULT2].getHandle();
-	};
+	}
 
 	HIMAGELIST getDisableLstSet2() const {
 		return _iconListVector[HLIST_DISABLE2].getHandle();
-	};
+	}
 
 	HIMAGELIST getDefaultLstDM() const {
 		return _iconListVector[HLIST_DEFAULT_DM].getHandle();
-	};
+	}
 
 	HIMAGELIST getDisableLstDM() const {
 		return _iconListVector[HLIST_DISABLE_DM].getHandle();
-	};
+	}
 
 	HIMAGELIST getDefaultLstSetDM2() const {
 		return _iconListVector[HLIST_DEFAULT_DM2].getHandle();
-	};
+	}
 
 	HIMAGELIST getDisableLstSetDM2() const {
 		return _iconListVector[HLIST_DISABLE_DM2].getHandle();
-	};
+	}
 
 	void resizeIcon(int size) {
 		reInit(size);
-	};
+	}
 
 	void reInit(int size);
 
 	int getStdIconAt(int i) const {
 		return _tbiis[i]._stdIcon;
-	};
+	}
 
 	bool replaceIcon(size_t witchList, size_t iconIndex, const wchar_t *iconLocation) const {
 		if ((witchList != HLIST_DEFAULT) && (witchList != HLIST_DISABLE) && 
@@ -153,9 +160,9 @@ public :
 			return false;
 
 		return _iconListVector[witchList].changeIcon(iconIndex, iconLocation);
-	};
+	}
 
-private :
+private:
 	ToolBarIconIDs _tbiis;
 	std::vector<DynamicCmdIcoBmp> _moreCmds;
 

@@ -17,15 +17,10 @@
 
 #pragma once
 
-#ifndef _WIN32_IE
-#define _WIN32_IE	0x0600
-#endif //_WIN32_IE
-
-#include "menuCmdID.h"
-#include "resource.h"
-#include <stdint.h>
 #include <windows.h>
+
 #include <commctrl.h>
+
 #include "Window.h"
 #include "dpiManagerV2.h"
 
@@ -40,35 +35,7 @@
 
 #define WM_TABSETSTYLE	(WM_APP + 0x024)
 
-const int marge = 8;
-const int nbCtrlMax = 10;
-
-const wchar_t TABBAR_ACTIVEFOCUSEDINDCATOR[64] = L"Active tab focused indicator";
-const wchar_t TABBAR_ACTIVEUNFOCUSEDINDCATOR[64] = L"Active tab unfocused indicator";
-const wchar_t TABBAR_ACTIVETEXT[64] = L"Active tab text";
-const wchar_t TABBAR_INACTIVETEXT[64] = L"Inactive tabs";
-
-const wchar_t TABBAR_INDIVIDUALCOLOR_1[64] = L"Tab color 1";
-const wchar_t TABBAR_INDIVIDUALCOLOR_2[64] = L"Tab color 2";
-const wchar_t TABBAR_INDIVIDUALCOLOR_3[64] = L"Tab color 3";
-const wchar_t TABBAR_INDIVIDUALCOLOR_4[64] = L"Tab color 4";
-const wchar_t TABBAR_INDIVIDUALCOLOR_5[64] = L"Tab color 5";
-
-const wchar_t TABBAR_INDIVIDUALCOLOR_DM_1[64] = L"Tab color dark mode 1";
-const wchar_t TABBAR_INDIVIDUALCOLOR_DM_2[64] = L"Tab color dark mode 2";
-const wchar_t TABBAR_INDIVIDUALCOLOR_DM_3[64] = L"Tab color dark mode 3";
-const wchar_t TABBAR_INDIVIDUALCOLOR_DM_4[64] = L"Tab color dark mode 4";
-const wchar_t TABBAR_INDIVIDUALCOLOR_DM_5[64] = L"Tab color dark mode 5";
-
-constexpr int g_TabIconSize = 16;
-constexpr int g_TabHeight = 22;
-constexpr int g_TabHeightLarge = 25;
-constexpr int g_TabWidth = 45;
-constexpr int g_TabWidthButton = 60;
-constexpr int g_TabCloseBtnSize = 11;
-constexpr int g_TabPinBtnSize = 11;
-constexpr int g_TabCloseBtnSize_DM = 16;
-constexpr int g_TabPinBtnSize_DM = 16;
+inline constexpr int nbCtrlMax = 10;
 
 struct TBHDR
 {
@@ -82,20 +49,20 @@ class TabBar : public Window
 {
 public:
 	TabBar() = default;
-	virtual ~TabBar() = default;
+	~TabBar() override = default;
 	void destroy() override;
-	virtual void init(HINSTANCE hInst, HWND hwnd, bool isVertical = false, bool isMultiLine = false);
+	virtual void init(HINSTANCE hInst, HWND parent, bool isVertical, bool isMultiLine);
 	void reSizeTo(RECT& rc2Adjust) override;
 	int insertAtEnd(const wchar_t *subTabName);
 	void activateAt(int index) const;
 	void getCurrentTitle(wchar_t *title, int titleLen);
 
-	int32_t getCurrentTabIndex() const {
-		return static_cast<int32_t>(SendMessage(_hSelf, TCM_GETCURSEL, 0, 0));
-	};
+	int getCurrentTabIndex() const {
+		return static_cast<int>(SendMessage(_hSelf, TCM_GETCURSEL, 0, 0));
+	}
 
-	int32_t getItemCount() const {
-		return static_cast<int32_t>(::SendMessage(_hSelf, TCM_GETITEMCOUNT, 0, 0));
+	int getItemCount() const {
+		return static_cast<int>(::SendMessage(_hSelf, TCM_GETITEMCOUNT, 0, 0));
 	}
 
 	void deletItemAt(size_t index);
@@ -103,13 +70,15 @@ public:
 	void deletAllItem() {
 		::SendMessage(_hSelf, TCM_DELETEALLITEMS, 0, 0);
 		_nbItem = 0;
-	};
+	}
 
 	void setImageList(HIMAGELIST himl);
 
     size_t nbItem() const {
         return _nbItem;
     }
+
+	void destroyFonts();
 
 	void setFont();
 
@@ -119,7 +88,7 @@ public:
 
 	int getNextOrPrevTabIdx(bool isNext) const;
 
-	DPIManagerV2& dpiManager() { return _dpiManager; };
+	DPIManagerV2& dpiManager() { return _dpiManager; }
 
 protected:
 	size_t _nbItem = 0;
@@ -134,8 +103,10 @@ protected:
 	DPIManagerV2 _dpiManager;
 
 	long getRowCount() const {
-		return long(::SendMessage(_hSelf, TCM_GETROWCOUNT, 0, 0));
+		return static_cast<long>(::SendMessage(_hSelf, TCM_GETROWCOUNT, 0, 0));
 	}
+
+	using Window::init;
 };
 
 
@@ -148,7 +119,7 @@ struct TabButtonZone
 
 	bool isHit(int x, int y, const RECT & tabRect, bool isVertical) const;
 	RECT getButtonRectFrom(const RECT & tabRect, bool isVertical) const;
-	void setOrder(int newOrder) { _order = newOrder; };
+	void setOrder(int newOrder) { _order = newOrder; }
 
 	HWND _parent = nullptr;
 	int _width = 0;
@@ -170,18 +141,18 @@ public :
 		id0, id1, id2, id3, id4, id5, id6, id7, id8, id9
 	};
 
-	void init(HINSTANCE hInst, HWND hwnd, bool isVertical, bool isMultiLine, unsigned char buttonsStatus = 0);
+	void init(HINSTANCE hInst, HWND parent, bool isVertical, bool isMultiLine, unsigned char buttonsStatus = 0);
 
 	void destroy() override;
 
 	POINT getDraggingPoint() const {
 		return _draggingPoint;
-	};
+	}
 
 	void resetDraggingPoint() {
 		_draggingPoint.x = 0;
 		_draggingPoint.y = 0;
-	};
+	}
 
 	static void triggerOwnerDrawTabbar(DPIManagerV2* pDPIManager);
 	static void doVertical();
@@ -221,7 +192,6 @@ protected:
 	int _nTabDragged = -1;
 	int _previousTabSwapped = -1;
 	POINT _draggingPoint{}; // coordinate of Screen
-	WNDPROC _tabBarDefaultProc = nullptr;
 
 	RECT _currentHoverTabRect{};
 	int _currentHoverTabItem = -1; // -1 : no mouse on any tab
@@ -253,10 +223,8 @@ protected:
 	HWND _tooltips = nullptr;
 
 	LRESULT runProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK TabBarPlusProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 
-	static LRESULT CALLBACK TabBarPlus_Proc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
-		return (((TabBarPlus *)(::GetWindowLongPtr(hwnd, GWLP_USERDATA)))->runProc(hwnd, Message, wParam, lParam));
-	};
 	void setActiveTab(int tabIndex);
 	bool exchangeTabItemData(int oldTab, int newTab, bool setToActive = true);
 	void exchangeItemData(POINT point);
@@ -277,11 +245,11 @@ protected:
 		return getTabIndexAt(p.x, p.y);
 	}
 
-	int32_t getTabIndexAt(int x, int y) const {
+	int getTabIndexAt(int x, int y) const {
 		TCHITTESTINFO hitInfo{};
 		hitInfo.pt.x = x;
 		hitInfo.pt.y = y;
-		return static_cast<int32_t>(::SendMessage(_hSelf, TCM_HITTEST, 0, reinterpret_cast<LPARAM>(&hitInfo)));
+		return static_cast<int>(::SendMessage(_hSelf, TCM_HITTEST, 0, reinterpret_cast<LPARAM>(&hitInfo)));
 	}
 
 	bool isPointInParentZone(POINT screenPoint) const {
@@ -293,4 +261,7 @@ protected:
 
 	void notify(int notifyCode, int tabIndex);
 	void trackMouseEvent(DWORD event2check);
+
+	using Window::init;
+	using TabBar::init;
 };

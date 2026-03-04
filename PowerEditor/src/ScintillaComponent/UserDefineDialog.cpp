@@ -15,19 +15,43 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#include "localization.h"
 #include "UserDefineDialog.h"
-#include "ScintillaEditView.h"
-//#include "Parameters.h"
-//#include "resource.h"
-#include "Notepad_plus_msgs.h"
+
+#include <windows.h>
+
+#include <algorithm>
+#include <cstdlib>
+#include <cwchar>
+#include <list>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include <SciLexer.h>
+
+#include "ColourPicker.h"
+#include "Common.h"
+#include "ControlsTab.h"
 #include "CustomFileDialog.h"
-//#include "Common.h"
+#include "Notepad_plus_msgs.h"
+#include "NppConstants.h"
+#include "NppDarkMode.h"
+#include "NppXml.h"
+#include "Parameters.h"
+#include "ScintillaEditView.h"
+#include "UserDefineResource.h"
+#include "colors.h"
+#include "dpiManagerV2.h"
+#include "localization.h"
+#include "menuCmdID.h"
+#include "resource.h"
 
 using namespace std;
 
 UserLangContainer * SharedParametersDialog::_pUserLang = NULL;
 ScintillaEditView * SharedParametersDialog::_pScintilla = NULL;
+std::wstring SharedParametersDialog::_kwlBuffer = std::wstring(max_char, L'\0');
 
 GlobalMappers & globalMappper()
 {
@@ -37,16 +61,16 @@ GlobalMappers & globalMappper()
     return gm;
 }
 
-void convertTo(wchar_t *dest, int destLen, const wchar_t *toConvert, const wchar_t *prefix)
+static void convertTo(wchar_t* dest, const wchar_t* toConvert, const wchar_t* prefix)
 {
 	bool inGroup = false;
-	int index = lstrlen(dest);
+	size_t index = std::wcslen(dest);
 	if (index > 0)
 		dest[index++] = ' ';
 	dest[index++] = prefix[0];
 	dest[index++] = prefix[1];
 
-	for (size_t i = 0, len = lstrlen(toConvert); i < len && index < destLen - 7; ++i)
+	for (size_t i = 0, len = std::wcslen(toConvert); i < len && index < max_char - 7; ++i)
 	{
 		if (i == 0 && toConvert[i] == '(' && toConvert[i + 1] == '(')
 		{
@@ -88,7 +112,7 @@ void convertTo(wchar_t *dest, int destLen, const wchar_t *toConvert, const wchar
 
 bool SharedParametersDialog::setPropertyByCheck(HWND hwnd, WPARAM id, bool & bool2set)
 {
-    bool2set = (BST_CHECKED == ::SendMessage(::GetDlgItem(hwnd, int(id)), BM_GETCHECK, 0, 0));
+	bool2set = (BST_CHECKED == ::SendMessage(::GetDlgItem(hwnd, static_cast<int>(id)), BM_GETCHECK, 0, 0));
 
     if (_pScintilla->getCurrentBuffer()->getLangType() == L_USER)
         _pScintilla->styleChange();
@@ -158,12 +182,6 @@ intptr_t CALLBACK FolderStyleDialog::run_dlgProc(UINT Message, WPARAM wParam, LP
             return SharedParametersDialog::run_dlgProc(Message, wParam, lParam);
         }
 
-        case WM_DPICHANGED_AFTERPARENT:
-        {
-            _pageLink.destroy();
-            return TRUE;
-        }
-
         case WM_COMMAND:
         {
             switch (wParam)
@@ -200,19 +218,15 @@ intptr_t CALLBACK FolderStyleDialog::run_dlgProc(UINT Message, WPARAM wParam, LP
                     return SharedParametersDialog::run_dlgProc(Message, wParam, lParam);
             }
         }
-        case WM_DESTROY:
-        {
-            _pageLink.destroy();
-            return TRUE;
-        }
+
         default :
             return SharedParametersDialog::run_dlgProc(Message, wParam, lParam);
     }
 }
 
-void FolderStyleDialog::setKeywords2List(int id)
+void FolderStyleDialog::setKeywords2List(int ctrlID)
 {
-    switch (id)
+	switch (ctrlID)
     {
         case IDC_FOLDER_IN_CODE1_OPEN_EDIT :     
         case IDC_FOLDER_IN_CODE1_MIDDLE_EDIT :   
@@ -223,8 +237,11 @@ void FolderStyleDialog::setKeywords2List(int id)
         case IDC_FOLDER_IN_COMMENT_OPEN_EDIT :   
         case IDC_FOLDER_IN_COMMENT_MIDDLE_EDIT : 
         case IDC_FOLDER_IN_COMMENT_CLOSE_EDIT :  
-            ::GetDlgItemText(_hSelf, id, _pUserLang->_keywordLists[globalMappper().dialogMapper[id]], max_char);
-            break;
+		{
+			const size_t len = ::GetDlgItemText(_hSelf, ctrlID, _kwlBuffer.data(), max_char);
+			_pUserLang->_keywordLists[globalMappper().dialogMapper[ctrlID]] = (len > 0) ? wstring2string(_kwlBuffer).c_str() : "";
+			break;
+		}
     }
 }
 
@@ -232,23 +249,23 @@ void FolderStyleDialog::updateDlg()
 {
     ::SendDlgItemMessage(_hSelf, IDC_FOLDER_FOLD_COMPACT,           BM_SETCHECK, _pUserLang->_foldCompact, 0);
 
-    ::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE1_OPEN_EDIT,     WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE1_OPEN]));
-    ::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE1_MIDDLE_EDIT,   WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE1_MIDDLE]));
-    ::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE1_CLOSE_EDIT,    WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE1_CLOSE]));
-    ::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE2_OPEN_EDIT,     WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE2_OPEN]));
-    ::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE2_MIDDLE_EDIT,   WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE2_MIDDLE]));
-    ::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE2_CLOSE_EDIT,    WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE2_CLOSE]));
-    ::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_COMMENT_OPEN_EDIT,   WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_COMMENT_OPEN]));
-    ::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_COMMENT_MIDDLE_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_COMMENT_MIDDLE]));
-    ::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_COMMENT_CLOSE_EDIT,  WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_COMMENT_CLOSE]));
+	::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE1_OPEN_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE1_OPEN]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE1_MIDDLE_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE1_MIDDLE]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE1_CLOSE_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE1_CLOSE]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE2_OPEN_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE2_OPEN]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE2_MIDDLE_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE2_MIDDLE]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_CODE2_CLOSE_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_CODE2_CLOSE]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_COMMENT_OPEN_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_COMMENT_OPEN]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_COMMENT_MIDDLE_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_COMMENT_MIDDLE]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_FOLDER_IN_COMMENT_CLOSE_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_FOLDERS_IN_COMMENT_CLOSE]).c_str()));
 }
 
-void FolderStyleDialog::retrieve(wchar_t *dest, const wchar_t *toRetrieve, wchar_t *prefix) const
+void FolderStyleDialog::retrieve(wchar_t* dest, const wchar_t* toRetrieve, const wchar_t* prefix)
 {
     int j = 0;
     bool begin2Copy = false;
 
-    for (size_t i = 0, len = lstrlen(toRetrieve); i < len ; ++i)
+	for (size_t i = 0, len = std::wcslen(toRetrieve); i < len; ++i)
     {
         if ((i == 0 || (toRetrieve[i-1] == ' ')) && (toRetrieve[i] == prefix[0] && toRetrieve[i+1] == prefix[1]))
         {
@@ -259,7 +276,7 @@ void FolderStyleDialog::retrieve(wchar_t *dest, const wchar_t *toRetrieve, wchar
             ++i;
             continue;
         }
-        else if (((toRetrieve[i] == ' ') && begin2Copy == true))
+		else if (((toRetrieve[i] == ' ') && begin2Copy))
         {
             begin2Copy = false;
         }
@@ -276,15 +293,16 @@ intptr_t CALLBACK KeyWordsStyleDialog::run_dlgProc(UINT Message, WPARAM wParam, 
     {
         case WM_INITDIALOG:
         {
-            // extend Keyword edit boxes to hold 128k of wchar_t
-            ::SendMessage(::GetDlgItem(_hSelf,IDC_KEYWORD1_EDIT), EM_LIMITTEXT, WPARAM(128*1024), 0);
-            ::SendMessage(::GetDlgItem(_hSelf,IDC_KEYWORD2_EDIT), EM_LIMITTEXT, WPARAM(128*1024), 0);
-            ::SendMessage(::GetDlgItem(_hSelf,IDC_KEYWORD3_EDIT), EM_LIMITTEXT, WPARAM(128*1024), 0);
-            ::SendMessage(::GetDlgItem(_hSelf,IDC_KEYWORD4_EDIT), EM_LIMITTEXT, WPARAM(128*1024), 0);
-            ::SendMessage(::GetDlgItem(_hSelf,IDC_KEYWORD5_EDIT), EM_LIMITTEXT, WPARAM(128*1024), 0);
-            ::SendMessage(::GetDlgItem(_hSelf,IDC_KEYWORD6_EDIT), EM_LIMITTEXT, WPARAM(128*1024), 0);
-            ::SendMessage(::GetDlgItem(_hSelf,IDC_KEYWORD7_EDIT), EM_LIMITTEXT, WPARAM(128*1024), 0);
-            ::SendMessage(::GetDlgItem(_hSelf,IDC_KEYWORD8_EDIT), EM_LIMITTEXT, WPARAM(128*1024), 0);
+			// extend Keyword edit boxes to hold 128k of wchar_t
+			static constexpr auto textLimit = static_cast<WPARAM>(128 * 1024);
+			::SendMessage(::GetDlgItem(_hSelf, IDC_KEYWORD1_EDIT), EM_LIMITTEXT, textLimit, 0);
+			::SendMessage(::GetDlgItem(_hSelf, IDC_KEYWORD2_EDIT), EM_LIMITTEXT, textLimit, 0);
+			::SendMessage(::GetDlgItem(_hSelf, IDC_KEYWORD3_EDIT), EM_LIMITTEXT, textLimit, 0);
+			::SendMessage(::GetDlgItem(_hSelf, IDC_KEYWORD4_EDIT), EM_LIMITTEXT, textLimit, 0);
+			::SendMessage(::GetDlgItem(_hSelf, IDC_KEYWORD5_EDIT), EM_LIMITTEXT, textLimit, 0);
+			::SendMessage(::GetDlgItem(_hSelf, IDC_KEYWORD6_EDIT), EM_LIMITTEXT, textLimit, 0);
+			::SendMessage(::GetDlgItem(_hSelf, IDC_KEYWORD7_EDIT), EM_LIMITTEXT, textLimit, 0);
+			::SendMessage(::GetDlgItem(_hSelf, IDC_KEYWORD8_EDIT), EM_LIMITTEXT, textLimit, 0);
 
             return SharedParametersDialog::run_dlgProc(Message, wParam, lParam);
         }
@@ -386,20 +404,24 @@ void KeyWordsStyleDialog::setKeywords2List(int id)
         case IDC_KEYWORD6_EDIT :
         case IDC_KEYWORD7_EDIT :
         case IDC_KEYWORD8_EDIT :
-            ::GetDlgItemText(_hSelf, id, _pUserLang->_keywordLists[globalMappper().dialogMapper[id]], max_char);
+		{
+			const size_t len = ::GetDlgItemText(_hSelf, id, _kwlBuffer.data(), max_char);
+			_pUserLang->_keywordLists[globalMappper().dialogMapper[id]] = (len > 0) ? wstring2string(_kwlBuffer).c_str() : "";
+			break;
+		}
     }
 }
 
 void KeyWordsStyleDialog::updateDlg()
 {
-    ::SendDlgItemMessage(_hSelf, IDC_KEYWORD1_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS1]));
-    ::SendDlgItemMessage(_hSelf, IDC_KEYWORD2_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS2]));
-    ::SendDlgItemMessage(_hSelf, IDC_KEYWORD3_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS3]));
-    ::SendDlgItemMessage(_hSelf, IDC_KEYWORD4_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS4]));
-    ::SendDlgItemMessage(_hSelf, IDC_KEYWORD5_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS5]));
-    ::SendDlgItemMessage(_hSelf, IDC_KEYWORD6_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS6]));
-    ::SendDlgItemMessage(_hSelf, IDC_KEYWORD7_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS7]));
-    ::SendDlgItemMessage(_hSelf, IDC_KEYWORD8_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS8]));
+	::SendDlgItemMessage(_hSelf, IDC_KEYWORD1_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS1]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_KEYWORD2_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS2]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_KEYWORD3_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS3]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_KEYWORD4_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS4]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_KEYWORD5_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS5]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_KEYWORD6_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS6]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_KEYWORD7_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS7]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_KEYWORD8_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_KEYWORDS8]).c_str()));
 
     ::SendDlgItemMessage(_hSelf, IDC_KEYWORD1_PREFIX_CHECK, BM_SETCHECK, _pUserLang->_isPrefix[0], 0);
     ::SendDlgItemMessage(_hSelf, IDC_KEYWORD2_PREFIX_CHECK, BM_SETCHECK, _pUserLang->_isPrefix[1], 0);
@@ -508,10 +530,11 @@ void CommentStyleDialog::setKeywords2List(int id)
         case IDC_NUMBER_SUFFIX1_EDIT :
         case IDC_NUMBER_SUFFIX2_EDIT :
         case IDC_NUMBER_RANGE_EDIT :  
-        {
-            ::GetDlgItemText(_hSelf, id, _pUserLang->_keywordLists[globalMappper().dialogMapper[id]], max_char);
-            break;
-        }
+		{
+			const size_t len = ::GetDlgItemText(_hSelf, id, _kwlBuffer.data(), max_char);
+			_pUserLang->_keywordLists[globalMappper().dialogMapper[id]] = (len > 0) ? wstring2string(_kwlBuffer).c_str() : "";
+			break;
+		}
 
         case IDC_COMMENT_OPEN_EDIT :
         case IDC_COMMENT_CLOSE_EDIT :
@@ -524,12 +547,9 @@ void CommentStyleDialog::setKeywords2List(int id)
     }
     if (index != -1)
     {
-        wchar_t* newList = new wchar_t[max_char];
-        newList[0] = '\0';
-        wchar_t* buffer = new wchar_t[max_char];
-        buffer[0] = '\0';
+		auto newList = std::wstring(max_char, L'\0');
 
-        const int list[] = {
+		static constexpr int list[]{
             IDC_COMMENTLINE_OPEN_EDIT,
             IDC_COMMENTLINE_CONTINUE_EDIT,
             IDC_COMMENTLINE_CLOSE_EDIT,
@@ -541,23 +561,21 @@ void CommentStyleDialog::setKeywords2List(int id)
         for (int i = 0; static_cast<size_t>(i) < sizeof(list) / sizeof(int); ++i)
         {
             _itow(i, intBuffer + 1, 10);
-            ::GetDlgItemText(_hSelf, list[i], buffer, max_char);
-            convertTo(newList, max_char, buffer, intBuffer);
+			::GetDlgItemText(_hSelf, list[i], _kwlBuffer.data(), max_char);
+			convertTo(newList.data(), _kwlBuffer.c_str(), intBuffer);
         }
 
-		wcscpy_s(_pUserLang->_keywordLists[index], newList);
-        delete[] newList;
-        delete[] buffer;
+		_pUserLang->_keywordLists[index] = wstring2string(newList).c_str();
     }
 }
 
-void CommentStyleDialog::retrieve(wchar_t *dest, const wchar_t *toRetrieve, const wchar_t *prefix) const
+void CommentStyleDialog::retrieve(wchar_t* dest, const wchar_t* toRetrieve, const wchar_t* prefix)
 {
     int j = 0;
     bool begin2Copy = false;
     bool inGroup = false;
 
-    for (size_t i = 0, len = lstrlen(toRetrieve); i < len ; ++i)
+	for (size_t i = 0, len = std::wcslen(toRetrieve); i < len; ++i)
     {
         if ((i == 0 || (toRetrieve[i-1] == ' ')) && (toRetrieve[i] == prefix[0] && toRetrieve[i+1] == prefix[1]))
         {
@@ -568,15 +586,15 @@ void CommentStyleDialog::retrieve(wchar_t *dest, const wchar_t *toRetrieve, cons
             ++i;
             continue;
         }
-        if (toRetrieve[i] == '(' && toRetrieve[i+1] == '(' && inGroup == false && begin2Copy == true)
+		if (toRetrieve[i] == '(' && toRetrieve[i + 1] == '(' && !inGroup && begin2Copy)
         {
             inGroup = true;
         }
-        if (toRetrieve[i] != ')' && toRetrieve[i-1] == ')' && toRetrieve[i-2] == ')' && inGroup == true)
+		if (toRetrieve[i] != ')' && toRetrieve[i - 1] == ')' && toRetrieve[i - 2] == ')' && inGroup)
         {
             inGroup = false;
         }
-        if (toRetrieve[i] == ' ' && begin2Copy == true)
+		if (toRetrieve[i] == ' ' && begin2Copy)
         {
             begin2Copy = false;
         }
@@ -589,10 +607,7 @@ void CommentStyleDialog::retrieve(wchar_t *dest, const wchar_t *toRetrieve, cons
 
 void CommentStyleDialog::updateDlg()
 {
-    wchar_t* buffer = new wchar_t[max_char];
-    buffer[0] = '\0';
-
-    const int list[] = {
+	static constexpr int list[]{
         IDC_COMMENTLINE_OPEN_EDIT,
         IDC_COMMENTLINE_CONTINUE_EDIT,
         IDC_COMMENTLINE_CLOSE_EDIT,
@@ -604,8 +619,8 @@ void CommentStyleDialog::updateDlg()
     for (int i = 0; static_cast<size_t>(i) < sizeof(list) / sizeof(int); ++i)
     {
         _itow(i, intBuffer + 1, 10);
-        retrieve(buffer, _pUserLang->_keywordLists[SCE_USER_KWLIST_COMMENTS], intBuffer);
-        ::SendDlgItemMessage(_hSelf, list[i], WM_SETTEXT, 0, reinterpret_cast<LPARAM>(buffer));
+		retrieve(_kwlBuffer.data(), string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_COMMENTS]).c_str(), intBuffer);
+		::SendDlgItemMessage(_hSelf, list[i], WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_kwlBuffer.c_str()));
     }
 
     ::SendDlgItemMessage(_hSelf, IDC_FOLDING_OF_COMMENTS,   BM_SETCHECK, _pUserLang->_allowFoldOfComments,    0);
@@ -618,22 +633,18 @@ void CommentStyleDialog::updateDlg()
     ::SendDlgItemMessage(_hSelf, IDC_COMMA_RADIO,           BM_SETCHECK, _pUserLang->_decimalSeparator == DECSEP_COMMA,  0);
     ::SendDlgItemMessage(_hSelf, IDC_BOTH_RADIO,            BM_SETCHECK, _pUserLang->_decimalSeparator == DECSEP_BOTH,  0);
 
-    ::SendDlgItemMessage(_hSelf, IDC_NUMBER_PREFIX1_EDIT,    WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_PREFIX1]));
-    ::SendDlgItemMessage(_hSelf, IDC_NUMBER_PREFIX2_EDIT,    WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_PREFIX2]));
-    ::SendDlgItemMessage(_hSelf, IDC_NUMBER_EXTRAS1_EDIT,    WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_EXTRAS1]));
-    ::SendDlgItemMessage(_hSelf, IDC_NUMBER_EXTRAS2_EDIT,    WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_EXTRAS2]));
-    ::SendDlgItemMessage(_hSelf, IDC_NUMBER_SUFFIX1_EDIT,    WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_SUFFIX1]));
-    ::SendDlgItemMessage(_hSelf, IDC_NUMBER_SUFFIX2_EDIT,    WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_SUFFIX2]));
-    ::SendDlgItemMessage(_hSelf, IDC_NUMBER_RANGE_EDIT,      WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_RANGE]));
-
-    delete[] buffer;
+	::SendDlgItemMessage(_hSelf, IDC_NUMBER_PREFIX1_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_PREFIX1]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_NUMBER_PREFIX2_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_PREFIX2]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_NUMBER_EXTRAS1_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_EXTRAS1]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_NUMBER_EXTRAS2_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_EXTRAS2]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_NUMBER_SUFFIX1_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_SUFFIX1]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_NUMBER_SUFFIX2_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_SUFFIX2]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_NUMBER_RANGE_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_NUMBER_RANGE]).c_str()));
 }
 
 void SymbolsStyleDialog::updateDlg()
 {
-    wchar_t* buffer = new wchar_t[max_char];
-    buffer[0] = '\0';
-    const int list[] = {
+	static constexpr int list[]{
         IDC_DELIMITER1_BOUNDARYOPEN_EDIT,
         IDC_DELIMITER1_ESCAPE_EDIT,
         IDC_DELIMITER1_BOUNDARYCLOSE_EDIT,
@@ -668,14 +679,12 @@ void SymbolsStyleDialog::updateDlg()
         else
             _itow(i, intBuffer, 10);
 
-        retrieve(buffer, _pUserLang->_keywordLists[SCE_USER_KWLIST_DELIMITERS], intBuffer);
-		::SendDlgItemMessage(_hSelf, list[i], WM_SETTEXT, 0, reinterpret_cast<LPARAM>(buffer));
+		retrieve(_kwlBuffer.data(), string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_DELIMITERS]).c_str(), intBuffer);
+		::SendDlgItemMessage(_hSelf, list[i], WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_kwlBuffer.c_str()));
     }
 
-    delete[] buffer;
-
-    ::SendDlgItemMessage(_hSelf, IDC_OPERATOR1_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_OPERATORS1]));
-    ::SendDlgItemMessage(_hSelf, IDC_OPERATOR2_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(_pUserLang->_keywordLists[SCE_USER_KWLIST_OPERATORS2]));
+	::SendDlgItemMessage(_hSelf, IDC_OPERATOR1_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_OPERATORS1]).c_str()));
+	::SendDlgItemMessage(_hSelf, IDC_OPERATOR2_EDIT, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(string2wstring(_pUserLang->_keywordLists[SCE_USER_KWLIST_OPERATORS2]).c_str()));
 }
 
 intptr_t CALLBACK SymbolsStyleDialog::run_dlgProc(UINT Message, WPARAM wParam, LPARAM lParam)
@@ -750,13 +759,13 @@ intptr_t CALLBACK SymbolsStyleDialog::run_dlgProc(UINT Message, WPARAM wParam, L
 }
 
 
-void SymbolsStyleDialog::retrieve(wchar_t *dest, const wchar_t *toRetrieve, wchar_t *prefix) const
+void SymbolsStyleDialog::retrieve(wchar_t* dest, const wchar_t* toRetrieve, const wchar_t* prefix)
 {
     int j = 0;
     bool begin2Copy = false;
     bool inGroup = false;
 
-    for (size_t i = 0, len = lstrlen(toRetrieve); i < len ; ++i)
+	for (size_t i = 0, len = std::wcslen(toRetrieve); i < len; ++i)
     {
         if ((i == 0 || (toRetrieve[i-1] == ' ')) && (toRetrieve[i] == prefix[0] && toRetrieve[i+1] == prefix[1]))
         {
@@ -767,15 +776,15 @@ void SymbolsStyleDialog::retrieve(wchar_t *dest, const wchar_t *toRetrieve, wcha
             ++i;
             continue;
         }
-        if (toRetrieve[i] == '(' && toRetrieve[i+1] == '(' && inGroup == false && begin2Copy == true)
+		if (toRetrieve[i] == '(' && toRetrieve[i + 1] == '(' && !inGroup && begin2Copy)
         {
             inGroup = true;
         }
-        if (toRetrieve[i] != ')' && toRetrieve[i-1] == ')' && toRetrieve[i-2] == ')' && inGroup == true)
+		if (toRetrieve[i] != ')' && toRetrieve[i - 1] == ')' && toRetrieve[i - 2] == ')' && inGroup)
         {
             inGroup = false;
         }
-        if (toRetrieve[i] == ' ' && begin2Copy == true)
+		if (toRetrieve[i] == ' ' && begin2Copy)
         {
             begin2Copy = false;
         }
@@ -790,12 +799,19 @@ void SymbolsStyleDialog::setKeywords2List(int id)
 {
     switch (id)
     {
-        case IDC_OPERATOR1_EDIT :
-            ::GetDlgItemText(_hSelf, id, _pUserLang->_keywordLists[SCE_USER_KWLIST_OPERATORS1], max_char);
-            break;
-        case IDC_OPERATOR2_EDIT :
-            ::GetDlgItemText(_hSelf, id, _pUserLang->_keywordLists[SCE_USER_KWLIST_OPERATORS2], max_char);
-            break;
+		case IDC_OPERATOR1_EDIT:
+		{
+			const size_t len = ::GetDlgItemText(_hSelf, id, _kwlBuffer.data(), max_char);
+			_pUserLang->_keywordLists[SCE_USER_KWLIST_OPERATORS1] = (len > 0) ? wstring2string(_kwlBuffer).c_str() : "";
+			break;
+		}
+
+		case IDC_OPERATOR2_EDIT:
+		{
+			const size_t len = ::GetDlgItemText(_hSelf, id, _kwlBuffer.data(), max_char);
+			_pUserLang->_keywordLists[SCE_USER_KWLIST_OPERATORS2] = (len > 0) ? wstring2string(_kwlBuffer).c_str() : "";
+			break;
+		}
 
         case IDC_DELIMITER1_BOUNDARYOPEN_EDIT :
         case IDC_DELIMITER1_ESCAPE_EDIT :
@@ -822,13 +838,10 @@ void SymbolsStyleDialog::setKeywords2List(int id)
         case IDC_DELIMITER8_ESCAPE_EDIT :
         case IDC_DELIMITER8_BOUNDARYCLOSE_EDIT :
         {
-            wchar_t* newList = new wchar_t[max_char];
-            newList[0] = '\0';
-            wchar_t* buffer = new wchar_t[max_char];
-            buffer[0] = '\0';
+			auto newList = std::wstring(max_char, L'\0');
             wchar_t intBuffer[10] = {'0', 0};
 
-            const int list[] = {
+			static constexpr int list[]{
                 IDC_DELIMITER1_BOUNDARYOPEN_EDIT,
                 IDC_DELIMITER1_ESCAPE_EDIT,
                 IDC_DELIMITER1_BOUNDARYCLOSE_EDIT,
@@ -863,13 +876,11 @@ void SymbolsStyleDialog::setKeywords2List(int id)
                     _itow(i, intBuffer, 10);
 
                 int dd = list[i];
-                ::GetDlgItemText(_hSelf, dd, buffer, max_char);
-                convertTo(newList, max_char, buffer, intBuffer);
+				::GetDlgItemText(_hSelf, dd, _kwlBuffer.data(), max_char);
+				convertTo(newList.data(), _kwlBuffer.c_str(), intBuffer);
             }
 
-			wcscpy_s(_pUserLang->_keywordLists[SCE_USER_KWLIST_DELIMITERS], newList);
-            delete[] newList;
-            delete[] buffer;
+			_pUserLang->_keywordLists[SCE_USER_KWLIST_DELIMITERS] = wstring2string(newList).c_str();
             break;
         }
         default :
@@ -877,39 +888,37 @@ void SymbolsStyleDialog::setKeywords2List(int id)
     }
 }
 
-UserDefineDialog::UserDefineDialog(): SharedParametersDialog()
+UserDefineDialog::UserDefineDialog() : SharedParametersDialog(), _pCurrentUserLang(std::make_unique<UserLangContainer>())
 {
-    _pCurrentUserLang = new UserLangContainer();
-
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DEFAULT,              globalMappper().styleNameMapper[SCE_USER_STYLE_DEFAULT].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_COMMENT,              globalMappper().styleNameMapper[SCE_USER_STYLE_COMMENT].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_COMMENTLINE,          globalMappper().styleNameMapper[SCE_USER_STYLE_COMMENTLINE].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_NUMBER,               globalMappper().styleNameMapper[SCE_USER_STYLE_NUMBER].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD1,             globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD1].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD2,             globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD2].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD3,             globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD3].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD4,             globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD4].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD5,             globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD5].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD6,             globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD6].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD7,             globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD7].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD8,             globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD8].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_OPERATOR,             globalMappper().styleNameMapper[SCE_USER_STYLE_OPERATOR].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_FOLDER_IN_CODE1,      globalMappper().styleNameMapper[SCE_USER_STYLE_FOLDER_IN_CODE1].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_FOLDER_IN_CODE2,      globalMappper().styleNameMapper[SCE_USER_STYLE_FOLDER_IN_CODE2].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_FOLDER_IN_COMMENT,    globalMappper().styleNameMapper[SCE_USER_STYLE_FOLDER_IN_COMMENT].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER1,           globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER1].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER2,           globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER2].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER3,           globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER3].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER4,           globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER4].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER5,           globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER5].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER6,           globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER6].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER7,           globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER7].c_str());
-    _pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER8,           globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER8].c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DEFAULT,              string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_DEFAULT]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_COMMENT,              string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_COMMENT]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_COMMENTLINE,          string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_COMMENTLINE]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_NUMBER,               string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_NUMBER]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD1,             string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD1]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD2,             string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD2]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD3,             string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD3]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD4,             string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD4]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD5,             string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD5]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD6,             string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD6]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD7,             string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD7]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_KEYWORD8,             string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_KEYWORD8]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_OPERATOR,             string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_OPERATOR]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_FOLDER_IN_CODE1,      string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_FOLDER_IN_CODE1]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_FOLDER_IN_CODE2,      string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_FOLDER_IN_CODE2]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_FOLDER_IN_COMMENT,    string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_FOLDER_IN_COMMENT]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER1,           string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER1]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER2,           string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER2]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER3,           string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER3]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER4,           string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER4]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER5,           string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER5]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER6,           string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER6]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER7,           string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER7]).c_str());
+	_pCurrentUserLang->_styles.addStyler(SCE_USER_STYLE_DELIMITER8,           string2wstring(globalMappper().styleNameMapper[SCE_USER_STYLE_DELIMITER8]).c_str());
 }
 
 UserDefineDialog::~UserDefineDialog()
 {
-    delete _pCurrentUserLang;
+    _pCurrentUserLang.reset(nullptr);
 }
 
 void UserDefineDialog::reloadLangCombo()
@@ -919,8 +928,8 @@ void UserDefineDialog::reloadLangCombo()
 	::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"User Defined Language"));
     for (int i = 0, nb = nppParam.getNbUserLang(); i < nb ; ++i)
     {
-        UserLangContainer & userLangContainer = nppParam.getULCFromIndex(i);
-		::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(userLangContainer.getName()));
+		const UserLangContainer* userLangContainer = nppParam.getULCFromIndex(i);
+		::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(userLangContainer->getName()));
     }
 }
 
@@ -928,12 +937,12 @@ void UserDefineDialog::changeStyle()
 {
     _status = !_status;
     NativeLangSpeaker *pNativeSpeaker = (NppParameters::getInstance()).getNativeLangSpeaker();
-    TiXmlNodeA *targetNode = nullptr;
-    if (pNativeSpeaker->getNativeLangA())
+    NppXml::Element targetNode{};
+    if (pNativeSpeaker->getNativeLang())
     {
-        targetNode = (pNativeSpeaker->getNativeLangA())->FirstChildElement("Dialog");
+        targetNode = NppXml::firstChildElement(pNativeSpeaker->getNativeLang(), "Dialog");
         if (targetNode)
-            targetNode = targetNode->FirstChildElement("UserDefine");
+            targetNode = NppXml::firstChildElement(targetNode, "UserDefine");
     }
     wstring dockButtonLabel;
     wstring defauleLabel;
@@ -974,7 +983,7 @@ void UserDefineDialog::changeStyle()
 
 void UserDefineDialog::enableLangAndControlsBy(size_t index)
 {
-    _pUserLang = (index == 0)?_pCurrentUserLang:&((NppParameters::getInstance()).getULCFromIndex(index - 1));
+	_pUserLang = (index == 0) ? _pCurrentUserLang.get() : (NppParameters::getInstance().getULCFromIndex(index - 1));
     if (index != 0)
         ::SetWindowText(::GetDlgItem(_hSelf, IDC_EXT_EDIT), _pUserLang->_ext.c_str());
 
@@ -986,11 +995,11 @@ void UserDefineDialog::enableLangAndControlsBy(size_t index)
 
 void UserDefineDialog::updateDlg()
 {
-	int i = static_cast<int32_t>(::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_GETCURSEL, 0, 0));
+	const auto i = static_cast<int>(::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_GETCURSEL, 0, 0));
 	if (i > 0) // the first menu item is generic UDL
 	{
 		NppParameters& nppParam = NppParameters::getInstance();
-		nppParam.setUdlXmlDirtyFromIndex(i - 1);
+		nppParam.setUdlXmlDirtyFromIndex(static_cast<size_t>(i) - 1);
 	}
 
     ::SendDlgItemMessage(_hSelf, IDC_LANGNAME_IGNORECASE_CHECK, BM_SETCHECK, _pUserLang->_isCaseIgnored, 0);
@@ -1010,7 +1019,7 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
     {
         case WM_INITDIALOG :
         {
-            _pUserLang = _pCurrentUserLang;
+            _pUserLang = _pCurrentUserLang.get();
 
             _ctrlTab.init(_hInst, _hSelf);
 
@@ -1094,6 +1103,7 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
             NppDarkMode::autoSubclassAndThemeChildControls(_hSelf);
             NppDarkMode::setDarkScrollBar(_hSelf);
             NppDarkMode::autoSubclassAndThemeWindowNotify(_hSelf);
+            ::SetWindowPos(_ctrlTab.getHSelf(), HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOREDRAW | SWP_NOACTIVATE | SWP_NOSENDCHANGING);
 
             return TRUE;
         }
@@ -1148,7 +1158,7 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
         {
             if (reinterpret_cast<HWND>(lParam) == ::GetDlgItem(_hSelf, IDC_UD_PERCENTAGE_SLIDER))
             {
-				int percent = static_cast<int32_t>(::SendDlgItemMessage(_hSelf, IDC_UD_PERCENTAGE_SLIDER, TBM_GETPOS, 0, 0));
+				const auto percent = static_cast<int>(::SendDlgItemMessage(_hSelf, IDC_UD_PERCENTAGE_SLIDER, TBM_GETPOS, 0, 0));
                 nppParam.SetTransparent(_hSelf, percent);
             }
             return TRUE;
@@ -1226,7 +1236,7 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
                                 bool isChecked = (BST_CHECKED == ::SendDlgItemMessage(_hSelf, IDC_UD_TRANSPARENT_CHECK, BM_GETCHECK, 0, 0));
                                 if (isChecked)
                                 {
-									int percent = static_cast<int32_t>(::SendDlgItemMessage(_hSelf, IDC_UD_PERCENTAGE_SLIDER, TBM_GETPOS, 0, 0));
+									const auto percent = static_cast<int>(::SendDlgItemMessage(_hSelf, IDC_UD_PERCENTAGE_SLIDER, TBM_GETPOS, 0, 0));
                                     nppParam.SetTransparent(_hSelf, percent);
                                 }
                                 ::ShowWindow(::GetDlgItem(_hSelf, IDC_UD_TRANSPARENT_CHECK), SW_SHOW);
@@ -1255,7 +1265,7 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
                         if (result == IDYES)
                         {
                             auto i = ::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_GETCURSEL, 0, 0);
-							const size_t langNameLen = 256;
+							static constexpr size_t langNameLen = 256;
 							wchar_t langName[langNameLen + 1] = { '\0' };
 							auto cbTextLen = ::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_GETLBTEXTLEN, i, 0);
 							if (static_cast<size_t>(cbTextLen) > langNameLen)
@@ -1284,7 +1294,7 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
                     case IDC_RENAME_BUTTON :
                     {
                         auto i = ::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_GETCURSEL, 0, 0);
-						const size_t langNameLen = 256;
+						static constexpr size_t langNameLen = 256;
 						wchar_t langName[langNameLen + 1] = { '\0' };
 						auto cbTextLen = ::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_GETLBTEXTLEN, i, 0);
 						if (static_cast<size_t>(cbTextLen) > langNameLen)
@@ -1298,7 +1308,7 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
                         StringDlg strDlg;
                         strDlg.init(_hInst, _hSelf, strTitle.c_str(), strName.c_str(), langName, langNameLenMax - 1);
 
-                        wchar_t *newName = (wchar_t *)strDlg.doDialog();
+						auto* newName = reinterpret_cast<wchar_t*>(strDlg.doDialog());
 
                         if (newName)
                         {
@@ -1321,8 +1331,8 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
                             ::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_SETCURSEL, i, 0);
 
                             //rename current language name in userLangArray
-                            UserLangContainer & userLangContainer = nppParam.getULCFromIndex(i-1);
-                            userLangContainer._name = newName;
+							UserLangContainer* userLangContainer = nppParam.getULCFromIndex(i - 1);
+							userLangContainer->_name = newName;
 
                             //rename current language name in langMenu
                             HWND hNpp = ::GetParent(_hSelf);
@@ -1373,12 +1383,12 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
                                 return TRUE;
 
                             //add current language in userLangArray at the end as a new lang
-                            UserLangContainer & userLang = (wParam == IDC_SAVEAS_BUTTON)?nppParam.getULCFromIndex(i-1):*_pCurrentUserLang;
+							const UserLangContainer* userLang = (wParam == IDC_SAVEAS_BUTTON) ? nppParam.getULCFromIndex(i - 1) : _pCurrentUserLang.get();
                             int newIndex = nppParam.addUserLangToEnd(userLang, newName);
 
                             //add new language name in combobox
-                            ::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_ADDSTRING, 0, LPARAM(newName));
-                            ::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_SETCURSEL, newIndex + 1, 0);
+							::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(newName));
+							::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_SETCURSEL, static_cast<WPARAM>(newIndex) + 1, 0);
 							::SendMessage(_hSelf, WM_COMMAND, MAKELONG(IDC_LANGNAME_COMBO, CBN_SELCHANGE), reinterpret_cast<LPARAM>(::GetDlgItem(_hSelf, IDC_LANGNAME_COMBO)));
 
                             //add new language name in langMenu
@@ -1396,8 +1406,6 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
                         fDlg.setExtFilter(L"UDL", L".xml");
                         wstring sourceFile = fDlg.doOpenSingleFileDlg();
                         if (sourceFile.empty()) break;
-
-                        NativeLangSpeaker* pNativeSpeaker = nppParam.getNativeLangSpeaker();
 
                         bool isSuccessful = nppParam.importUDLFromFile(sourceFile);
                         if (isSuccessful)
@@ -1427,8 +1435,6 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
 
                     case IDC_EXPORT_BUTTON :
                     {
-                        NativeLangSpeaker* pNativeSpeaker = nppParam.getNativeLangSpeaker();
-
 						auto i2Export = ::SendDlgItemMessage(_hSelf, IDC_LANGNAME_COMBO, CB_GETCURSEL, 0, 0);
                         if (i2Export == 0)
                         {
@@ -1478,7 +1484,7 @@ intptr_t CALLBACK UserDefineDialog::run_dlgProc(UINT message, WPARAM wParam, LPA
                         bool isChecked = (BST_CHECKED == ::SendDlgItemMessage(_hSelf, IDC_UD_TRANSPARENT_CHECK, BM_GETCHECK, 0, 0));
                         if (isChecked)
                         {
-							int percent = static_cast<int32_t>(::SendDlgItemMessage(_hSelf, IDC_UD_PERCENTAGE_SLIDER, TBM_GETPOS, 0, 0));
+							const auto percent = static_cast<int>(::SendDlgItemMessage(_hSelf, IDC_UD_PERCENTAGE_SLIDER, TBM_GETPOS, 0, 0));
                             nppParam.SetTransparent(_hSelf, percent);
                         }
                         else
@@ -1604,10 +1610,9 @@ intptr_t CALLBACK StringDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM lPa
 			NppDarkMode::autoSubclassAndThemeChildControls(_hSelf);
 
 			// Re-route to Subclassed the edit control's proc if needed
-			if (_restrictedChars.length())
+			if (!_restrictedChars.empty())
 			{
-				::SetWindowLongPtr(GetDlgItem(_hSelf, IDC_STRING_EDIT), GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-				_oldEditProc = reinterpret_cast<WNDPROC>(SetWindowLongPtr(GetDlgItem(_hSelf, IDC_STRING_EDIT), GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(customEditProc)));
+				::SetWindowSubclass(::GetDlgItem(_hSelf, IDC_STRING_EDIT), CustomEditProc, static_cast<UINT_PTR>(SubclassID::first), reinterpret_cast<DWORD_PTR>(this));
 			}
 
             ::SetWindowText(_hSelf, _title.c_str());
@@ -1694,48 +1699,55 @@ intptr_t CALLBACK StringDlg::run_dlgProc(UINT Message, WPARAM wParam, LPARAM lPa
 	return FALSE;
 }
 
-LRESULT StringDlg::customEditProc(HWND hEdit, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK StringDlg::CustomEditProc(
+	HWND hWnd,
+	UINT uMsg,
+	WPARAM wParam,
+	LPARAM lParam,
+	UINT_PTR uIdSubclass,
+	DWORD_PTR dwRefData
+)
 {
-	StringDlg *pSelf = reinterpret_cast<StringDlg *>(::GetWindowLongPtr(hEdit, GWLP_USERDATA));
-	if (!pSelf)
-	{
-		return 0;
-	}
+	auto* pRefData = reinterpret_cast<StringDlg*>(dwRefData);
 
-	switch (msg)
+	switch (uMsg)
 	{
-	case WM_CHAR:
-		if (0x80 & GetKeyState(VK_CONTROL))
+		case WM_NCDESTROY:
 		{
-			switch (wParam)
+			::RemoveWindowSubclass(hWnd, StringDlg::CustomEditProc, uIdSubclass);
+			break;
+		}
+
+		case WM_CHAR:
+		{
+			if (0x80 & GetKeyState(VK_CONTROL))
 			{
-			case 0x16: // ctrl - V
-				pSelf->HandlePaste(hEdit);
-				return 0;
+				switch (wParam)
+				{
+					case 0x16: // ctrl - V
+						pRefData->HandlePaste(hWnd);
+						return 0;
 
-			case 0x03: // ctrl - C
-			case 0x18: // ctrl - X
-			default:
-				// Let them go to default
-				break;
+					case 0x03: // ctrl - C
+					case 0x18: // ctrl - X
+					default:
+						// Let them go to default
+						break;
+				}
 			}
+			else
+			{
+				// If Key pressed not permitted, then return 0
+				if (!pRefData->isAllowed(reinterpret_cast<wchar_t*>(&wParam)))
+					return 0;
+			}
+			break;
 		}
-		else
-		{
-			// If Key pressed not permitted, then return 0
-			if (!pSelf->isAllowed(reinterpret_cast<wchar_t*>(&wParam)))
-				return 0;
-		}
-		break;
 
-	case WM_DESTROY:
-		// Reset the message handler to the original one
-		SetWindowLongPtr(hEdit, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(pSelf->_oldEditProc));
-		return 0;
+		default:
+			break;
 	}
-
-	// Process the message using the default handler
-	return CallWindowProc(pSelf->_oldEditProc, hEdit, msg, wParam, lParam);
+	return ::DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
 bool StringDlg::isAllowed([[maybe_unused]] const wstring & txt)
@@ -1787,38 +1799,31 @@ void StylerDlg::move2CtrlRight(HWND hwndDlg, int ctrlID, HWND handle2Move, int h
     ::MoveWindow(handle2Move, p.x, p.y, handle2MoveWidth, handle2MoveHeight, TRUE);
 }
 
-intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+intptr_t CALLBACK StylerDlg::run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
-    StylerDlg * dlg = (StylerDlg *)::GetProp(hwnd, L"Styler dialog prop");
+    auto* dlg = static_cast<StylerDlg*>(::GetProp(_hSelf, L"Styler dialog prop"));
     NppParameters& nppParam = NppParameters::getInstance();
 
     switch (message)
     {
         case WM_INITDIALOG :
         {
-            NppDarkMode::setDarkTitleBar(hwnd);
-            NppDarkMode::autoSubclassAndThemeChildControls(hwnd);
+            NppDarkMode::setDarkTitleBar(_hSelf);
+            NppDarkMode::autoSubclassAndThemeChildControls(_hSelf);
 
             NativeLangSpeaker *pNativeLangSpeaker = nppParam.getNativeLangSpeaker();
-            pNativeLangSpeaker->changeUserDefineLangPopupDlg(hwnd);
+            pNativeLangSpeaker->changeUserDefineLangPopupDlg(_hSelf);
 
-            ::SetProp(hwnd, L"Styler dialog prop", (HANDLE)lParam);
-            dlg = (StylerDlg *)::GetProp(hwnd, L"Styler dialog prop");
+            ::SetProp(_hSelf, L"Styler dialog prop", reinterpret_cast<HANDLE>(lParam));
+            dlg = static_cast<StylerDlg*>(::GetProp(_hSelf, L"Styler dialog prop"));
             Style & style = SharedParametersDialog::_pUserLang->_styles.getStyler(dlg->_stylerIndex);
 
-            // move dialog over UDL GUI (position 0,0 of UDL window) so it wouldn't cover the code
-            RECT wrc{};
-            ::GetWindowRect(dlg->_parent, &wrc);
-            wrc.left = wrc.left < 0 ? 200 : wrc.left;   // if outside of visible area
-            wrc.top = wrc.top < 0 ? 200 : wrc.top;
-            ::SetWindowPos(hwnd, HWND_TOP, wrc.left, wrc.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-
-            ::SendDlgItemMessage(hwnd, IDC_STYLER_CHECK_UNDERLINE, BM_SETCHECK, style._fontStyle & FONTSTYLE_UNDERLINE, 0);
-            ::SendDlgItemMessage(hwnd, IDC_STYLER_CHECK_ITALIC,    BM_SETCHECK, style._fontStyle & FONTSTYLE_ITALIC, 0);
-            ::SendDlgItemMessage(hwnd, IDC_STYLER_CHECK_BOLD,      BM_SETCHECK, style._fontStyle & FONTSTYLE_BOLD, 0);
+            ::SendDlgItemMessage(_hSelf, IDC_STYLER_CHECK_UNDERLINE, BM_SETCHECK, style._fontStyle & FONTSTYLE_UNDERLINE, 0);
+            ::SendDlgItemMessage(_hSelf, IDC_STYLER_CHECK_ITALIC,    BM_SETCHECK, style._fontStyle & FONTSTYLE_ITALIC, 0);
+            ::SendDlgItemMessage(_hSelf, IDC_STYLER_CHECK_BOLD,      BM_SETCHECK, style._fontStyle & FONTSTYLE_BOLD, 0);
 
             // for the font size combo
-            HWND hFontSizeCombo = ::GetDlgItem(hwnd, IDC_STYLER_COMBO_FONT_SIZE);
+            HWND hFontSizeCombo = ::GetDlgItem(_hSelf, IDC_STYLER_COMBO_FONT_SIZE);
             for (size_t j = 0 ; j < int(sizeof(fontSizeStrs))/(3*sizeof(wchar_t)) ; ++j)
 				::SendMessage(hFontSizeCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(fontSizeStrs[j]));
 
@@ -1833,7 +1838,7 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
                 ::SendMessage(hFontSizeCombo, CB_SETCURSEL, i, 0);
 
             // for the font name combo
-            HWND hFontNameCombo = ::GetDlgItem(hwnd, IDC_STYLER_COMBO_FONT_NAME);
+            HWND hFontNameCombo = ::GetDlgItem(_hSelf, IDC_STYLER_COMBO_FONT_NAME);
             const std::vector<wstring> & fontlist = nppParam.getFontList();
             for (size_t j = 0, len = fontlist.size() ; j < len ; ++j)
             {
@@ -1846,26 +1851,26 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
                 i = 0;
             ::SendMessage(hFontNameCombo, CB_SETCURSEL, i, 0);
 
-            if (style._fgColor == COLORREF(-1))
+			if (style._fgColor == static_cast<COLORREF>(-1))
                 style._fgColor = black;
 
-            if (style._bgColor == COLORREF(-1))
+			if (style._bgColor == static_cast<COLORREF>(-1))
                 style._bgColor = white;
 
-            dlg->_pFgColour->init(dlg->_hInst, hwnd);
+            dlg->_pFgColour->init(dlg->_hInst, _hSelf);
             dlg->_pFgColour->setColour(style._fgColor);
             bool isFgEnabled = (style._colorStyle & COLORSTYLE_FOREGROUND) != 0;
             dlg->_pFgColour->setEnabled(isFgEnabled);
-            ::SendDlgItemMessage(hwnd, IDC_STYLER_CHECK_FG_TRANSPARENT, BM_SETCHECK, !isFgEnabled, 0);
-            dlg->_pBgColour->init(dlg->_hInst, hwnd);
+            ::SendDlgItemMessage(_hSelf, IDC_STYLER_CHECK_FG_TRANSPARENT, BM_SETCHECK, !isFgEnabled, 0);
+            dlg->_pBgColour->init(dlg->_hInst, _hSelf);
             dlg->_pBgColour->setColour(style._bgColor);
             bool isBgEnabled = (style._colorStyle & COLORSTYLE_BACKGROUND) != 0;
             dlg->_pBgColour->setEnabled(isBgEnabled);
-            ::SendDlgItemMessage(hwnd, IDC_STYLER_CHECK_BG_TRANSPARENT, BM_SETCHECK, !isBgEnabled, 0);
+            ::SendDlgItemMessage(_hSelf, IDC_STYLER_CHECK_BG_TRANSPARENT, BM_SETCHECK, !isBgEnabled, 0);
 
-            const int moveSize = DPIManagerV2::scale(25, hwnd);
-            dlg->move2CtrlRight(hwnd, IDC_STYLER_FG_STATIC, dlg->_pFgColour->getHSelf(), moveSize, moveSize);
-            dlg->move2CtrlRight(hwnd, IDC_STYLER_BG_STATIC, dlg->_pBgColour->getHSelf(), moveSize, moveSize);
+            const int moveSize = DPIManagerV2::scale(25, _hSelf);
+            dlg->move2CtrlRight(_hSelf, IDC_STYLER_FG_STATIC, dlg->_pFgColour->getHSelf(), moveSize, moveSize);
+            dlg->move2CtrlRight(_hSelf, IDC_STYLER_BG_STATIC, dlg->_pBgColour->getHSelf(), moveSize, moveSize);
 
             dlg->_pFgColour->display();
             dlg->_pBgColour->display();
@@ -1873,9 +1878,12 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
             unordered_map<int, int>::iterator iter = globalMappper().nestingMapper.begin();
             for (; iter != globalMappper().nestingMapper.end(); ++iter)
             {
-                ::SendDlgItemMessage(hwnd, iter->first, BM_SETCHECK, style._nesting & iter->second, 0);
-                ::EnableWindow(::GetDlgItem(hwnd, iter->first), dlg->_enabledNesters & iter->second);
+                ::SendDlgItemMessage(_hSelf, iter->first, BM_SETCHECK, style._nesting & iter->second, 0);
+                ::EnableWindow(::GetDlgItem(_hSelf, iter->first), dlg->_enabledNesters & iter->second);
             }
+
+            goToCenter();
+
             return TRUE;
         }
 
@@ -1906,19 +1914,19 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
 
         case NPPM_INTERNAL_REFRESHDARKMODE:
         {
-            NppDarkMode::setDarkTitleBar(hwnd);
-            NppDarkMode::autoThemeChildControls(hwnd);
-            ::SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            NppDarkMode::setDarkTitleBar(_hSelf);
+            NppDarkMode::autoThemeChildControls(_hSelf);
+            ::SetWindowPos(_hSelf, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
             return TRUE;
         }
 
         case WM_DPICHANGED:
         {
-            const int moveSize = DPIManagerV2::scale(25, hwnd);
-            dlg->move2CtrlRight(hwnd, IDC_STYLER_FG_STATIC, dlg->_pFgColour->getHSelf(), moveSize, moveSize);
-            dlg->move2CtrlRight(hwnd, IDC_STYLER_BG_STATIC, dlg->_pBgColour->getHSelf(), moveSize, moveSize);
+            const int moveSize = DPIManagerV2::scale(25, _hSelf);
+            dlg->move2CtrlRight(_hSelf, IDC_STYLER_FG_STATIC, dlg->_pFgColour->getHSelf(), moveSize, moveSize);
+            dlg->move2CtrlRight(_hSelf, IDC_STYLER_BG_STATIC, dlg->_pBgColour->getHSelf(), moveSize, moveSize);
 
-            DPIManagerV2::setPositionDpi(lParam, hwnd, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            DPIManagerV2::setPositionDpi(lParam, _hSelf, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
             return TRUE;
         }
@@ -1931,18 +1939,18 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
             Style & style = SharedParametersDialog::_pUserLang->_styles.getStyler(dlg->_stylerIndex);
             if (HIWORD(wParam) == CBN_SELCHANGE)
             {
-                auto i = ::SendDlgItemMessage(hwnd, LOWORD(wParam), CB_GETCURSEL, 0, 0);
+                auto i = ::SendDlgItemMessage(_hSelf, LOWORD(wParam), CB_GETCURSEL, 0, 0);
                 if (LOWORD(wParam) == IDC_STYLER_COMBO_FONT_SIZE)
                 {
                     if (i != 0)
                     {
-						const size_t intStrLen = 3;
+						static constexpr size_t intStrLen = 3;
 						wchar_t intStr[intStrLen] = { '\0' };
-						auto lbTextLen = ::SendDlgItemMessage(hwnd, LOWORD(wParam), CB_GETLBTEXTLEN, i, 0);
+						auto lbTextLen = ::SendDlgItemMessage(_hSelf, LOWORD(wParam), CB_GETLBTEXTLEN, i, 0);
 						if (static_cast<size_t>(lbTextLen) > intStrLen - 1)
 							return TRUE;
 
-						::SendDlgItemMessage(hwnd, LOWORD(wParam), CB_GETLBTEXT, i, reinterpret_cast<LPARAM>(intStr));
+						::SendDlgItemMessage(_hSelf, LOWORD(wParam), CB_GETLBTEXT, i, reinterpret_cast<LPARAM>(intStr));
                         if (!intStr[0])
                             style._fontSize = -1;
                         else
@@ -1960,7 +1968,7 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
                 }
                 else if (LOWORD(wParam) == IDC_STYLER_COMBO_FONT_NAME)
                 {
-                    style._fontName = (wchar_t *)::SendDlgItemMessage(hwnd, LOWORD(wParam), CB_GETITEMDATA, i, 0);
+                    style._fontName = reinterpret_cast<wchar_t*>(::SendDlgItemMessage(_hSelf, LOWORD(wParam), CB_GETITEMDATA, i, 0));
                 }
 
                 // show changes to user, re-color document
@@ -1978,15 +1986,15 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
                     if (SharedParametersDialog::_pScintilla->getCurrentBuffer()->getLangType() == L_USER)
                         SharedParametersDialog::_pScintilla->styleChange();
 
-                    ::RemoveProp(hwnd, L"Styler dialog prop");
-                    ::EndDialog(hwnd, IDCANCEL);
+                    ::RemoveProp(_hSelf, L"Styler dialog prop");
+                    ::EndDialog(_hSelf, IDCANCEL);
                     return TRUE;
                 }
 
                 if (wParam == IDOK)
                 {
-                    ::RemoveProp(hwnd, L"Styler dialog prop");
-                    ::EndDialog(hwnd, IDOK);
+                    ::RemoveProp(_hSelf, L"Styler dialog prop");
+                    ::EndDialog(_hSelf, IDOK);
                     return TRUE;
                 }
 
@@ -1997,7 +2005,7 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
 				{
 					if (wParam == IDC_STYLER_CHECK_FG_TRANSPARENT)
 					{
-						bool isTransparent = (BST_CHECKED == ::SendDlgItemMessage(hwnd, IDC_STYLER_CHECK_FG_TRANSPARENT, BM_GETCHECK, 0, 0));
+                        bool isTransparent = (BST_CHECKED == ::SendDlgItemMessage(_hSelf, IDC_STYLER_CHECK_FG_TRANSPARENT, BM_GETCHECK, 0, 0));
 						dlg->_pFgColour->setEnabled(!isTransparent);
 						dlg->_pFgColour->redraw();
                         if (isTransparent)
@@ -2008,7 +2016,7 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
 
 					if (wParam == IDC_STYLER_CHECK_BG_TRANSPARENT)
 					{
-						bool isTransparent = (BST_CHECKED == ::SendDlgItemMessage(hwnd, IDC_STYLER_CHECK_BG_TRANSPARENT, BM_GETCHECK, 0, 0));
+                        bool isTransparent = (BST_CHECKED == ::SendDlgItemMessage(_hSelf, IDC_STYLER_CHECK_BG_TRANSPARENT, BM_GETCHECK, 0, 0));
 						dlg->_pBgColour->setEnabled(!isTransparent);
 						dlg->_pBgColour->redraw();
                         if (isTransparent)
@@ -2027,7 +2035,7 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
 					{
 						style._colorStyle &= ~COLORSTYLE_FOREGROUND;
 					}
-					::SendDlgItemMessage(hwnd, IDC_STYLER_CHECK_FG_TRANSPARENT, BM_SETCHECK, !dlg->_pFgColour->isEnabled(), 0);
+					::SendDlgItemMessage(_hSelf, IDC_STYLER_CHECK_FG_TRANSPARENT, BM_SETCHECK, !dlg->_pFgColour->isEnabled(), 0);
 
 					if (dlg->_pBgColour->isEnabled())
 					{
@@ -2037,21 +2045,21 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
 					{
 						style._colorStyle &= ~COLORSTYLE_BACKGROUND;
 					}
-					::SendDlgItemMessage(hwnd, IDC_STYLER_CHECK_BG_TRANSPARENT, BM_SETCHECK, !dlg->_pBgColour->isEnabled(), 0);
+					::SendDlgItemMessage(_hSelf, IDC_STYLER_CHECK_BG_TRANSPARENT, BM_SETCHECK, !dlg->_pBgColour->isEnabled(), 0);
 				}
                 style._fontStyle = FONTSTYLE_NONE;
-                if (BST_CHECKED == ::SendMessage(::GetDlgItem(hwnd, IDC_STYLER_CHECK_BOLD), BM_GETCHECK, 0, 0))
+                if (BST_CHECKED == ::SendMessage(::GetDlgItem(_hSelf, IDC_STYLER_CHECK_BOLD), BM_GETCHECK, 0, 0))
                     style._fontStyle |= FONTSTYLE_BOLD;
-                if (BST_CHECKED == ::SendMessage(::GetDlgItem(hwnd, IDC_STYLER_CHECK_ITALIC), BM_GETCHECK, 0, 0))
+                if (BST_CHECKED == ::SendMessage(::GetDlgItem(_hSelf, IDC_STYLER_CHECK_ITALIC), BM_GETCHECK, 0, 0))
                     style._fontStyle |= FONTSTYLE_ITALIC;
-                if (BST_CHECKED == ::SendMessage(::GetDlgItem(hwnd, IDC_STYLER_CHECK_UNDERLINE), BM_GETCHECK, 0, 0))
+                if (BST_CHECKED == ::SendMessage(::GetDlgItem(_hSelf, IDC_STYLER_CHECK_UNDERLINE), BM_GETCHECK, 0, 0))
                     style._fontStyle |= FONTSTYLE_UNDERLINE;
 
                 style._nesting = SCE_USER_MASK_NESTING_NONE;
                 unordered_map<int, int>::iterator iter = globalMappper().nestingMapper.begin();
                 for (; iter != globalMappper().nestingMapper.end(); ++iter)
                 {
-                    if (BST_CHECKED == ::SendMessage(::GetDlgItem(hwnd, iter->first), BM_GETCHECK, 0, 0))
+                    if (BST_CHECKED == ::SendMessage(::GetDlgItem(_hSelf, iter->first), BM_GETCHECK, 0, 0))
                         style._nesting |= iter->second;
                 }
 
@@ -2063,11 +2071,22 @@ intptr_t CALLBACK StylerDlg::dlgProc(HWND hwnd, UINT message, WPARAM wParam, LPA
             }
             return FALSE;
         }
+
         case WM_CLOSE:
         {
+            Style& style = SharedParametersDialog::_pUserLang->_styles.getStyler(dlg->_stylerIndex);
+            style = dlg->_initialStyle;
+
+            // show changes to user, re-color document
+            if (SharedParametersDialog::_pScintilla->getCurrentBuffer()->getLangType() == L_USER)
+                SharedParametersDialog::_pScintilla->styleChange();
+
+            ::RemoveProp(_hSelf, L"Styler dialog prop");
+            ::EndDialog(_hSelf, IDCANCEL);
             return TRUE;
         }
-        default :
+
+        default:
             return FALSE;
     }
     return FALSE;

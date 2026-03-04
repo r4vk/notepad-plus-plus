@@ -14,27 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+
 #pragma once
 
-#include "TabBar.h"
-#include "Buffer.h"
+#include <windows.h>
 
-const int SAVED_IMG_INDEX = 0;
-const int UNSAVED_IMG_INDEX = 1;
-const int REDONLY_IMG_INDEX = 2;
-const int REDONLYSYS_IMG_INDEX = 3;
-const int MONITORING_IMG_INDEX = 4;
+#include <vector>
+
+#include "Buffer.h"
+#include "ImageListSet.h"
+#include "NppConstants.h"
+#include "ScintillaEditView.h"
+#include "TabBar.h"
+#include "Window.h"
 
 
 class DocTabView : public TabBarPlus
 {
-public :
-	DocTabView():TabBarPlus(), _pView(NULL) {};
-	virtual ~DocTabView(){};
-	
-	void destroy() override {
-		TabBarPlus::destroy();
-	};
+public:
+	DocTabView() : TabBarPlus(), _pView(nullptr) {}
+	~DocTabView() override {}
 
 	void init(HINSTANCE hInst, HWND parent, ScintillaEditView * pView, unsigned char indexChoice, unsigned char buttonsStatus);
 
@@ -45,11 +44,11 @@ public :
 			return;
 		_iconListIndexChoice = choice;
 		TabBar::setImageList(_pIconListVector[_iconListIndexChoice]->getHandle());
-	};
+	}
 
 	void addBuffer(BufferID buffer);
 	void closeBuffer(BufferID buffer);
-	void bufferUpdated(Buffer * buffer, int mask);
+	void bufferUpdated(const Buffer* buffer, int mask);
 
 	bool activateBuffer(BufferID buffer);
 
@@ -65,7 +64,7 @@ public :
 
 	void resizeIconsDpi() {
 		UINT newSize = dpiManager().scale(g_TabIconSize);
-		for (const auto& i : _pIconListVector)
+		for (const IconList* const& i : _pIconListVector)
 		{
 			ImageList_SetIconSize(i->getHandle(), newSize, newSize);
 		}
@@ -76,20 +75,20 @@ public :
 			_iconListIndexChoice = 0;
 
 		TabBar::setImageList(_pIconListVector[_iconListIndexChoice]->getHandle());
-	};
+	}
 
 	const ScintillaEditView* getScintillaEditView() const {
 		return _pView;
-	};
+	}
 
-	void setIndividualTabColour(BufferID bufferId, int colorId);
+	static void setIndividualTabColour(BufferID bufferId, int colorId);
 	int getIndividualTabColourId(int tabIndex) override;
 	
 	HIMAGELIST getImgLst(UINT index) {
 		if (index >= _pIconListVector.size())
 			index = 0;
 		return _pIconListVector[index]->getHandle();
-	};
+	}
 
 private :
 	ScintillaEditView *_pView = nullptr;
@@ -100,4 +99,7 @@ private :
 
 	std::vector<IconList *> _pIconListVector;
 	int _iconListIndexChoice = -1;
+
+	using Window::init;
+	using TabBar::init;
 };

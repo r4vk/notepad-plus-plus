@@ -1,34 +1,43 @@
-Notepad++ v8.8.5 regression-fix:
+Notepad++ v8.9.2 regression fixes, bug-fixes & new improvements:
 
- 1. Fix "Edit with Notepad++" context menu not being installed correctly regression.
- 
+ 1. Security enhancement: Make updater check interity & authenticity of server-returned XML (XMLDsig).
+ 2. Security enhancement: Fix untrusted search path vulnerability (CVE-2026-25926) by launching explorer.exe.
+ 3. Security enhancement: Make auto-updater (WinGUp) even more secured (Remove dll dependency & unscured options).
+ 4. Fix a plugin installation crash due to incorrect processing catch.
+ 5. Add redact selection feature - Default: █, Modifier (Shift + Click): ●.
+ 6. Fix context menu shortcut localization not aligning to the right regression.
 
-Notepad++ v8.8.4 vulnerability-fixes, bug-fixes & new enhancement:
 
- 1. Fix -notabbar & asNotepad.xml stop hiding tabbar regression (from v8.7.9).
- 2. Fix "Edit with Notepad++" not removed by uninstaller regression (from v8.8.3).
- 3. Fix possible heap memory leak.
- 4. Increase search input length from 2046 to 16383.
- 5. Add warning tip for the max length on search input (Find/Replace).
- 6. Fix JavaScript listed twice in Language & Indent settings of Preferences issue.
- 7. Fix external lexers showing several time in Indent settings issue.
- 8. Add button to insert variables in the run dialog.
- 9. Enhance "Go to settings": guide users to the related setting explicitly.
-10. Add a clear button for filter field in Shortcut Mapper.
-11. Make NFO font overridable by adding font name in Lexer "nfo" of stylers.xml.
+Notepad++ v8.9.1 regression fixes, bug-fixes & new improvements:
+
+ 1. Fix EOL duplication regression when playing back old recorded macros.
+ 2. Remedy search failure for pasted text containing trailing invisible EOL character.
+ 3. Fix customized context menu regression where separator (id="0") escapes FolderName submenu.
+ 4. Fix issue where a single undo reverted multiple changes after macro execution.
+ 5. Fix visual glitch when dragging dockable dialogs on a 2nd monitor.
+ 6. Fix inconsistent automatic search mode switching (RegEx to Extended) in Find dialog.
+ 7. Fix incorrect URL parsing caused by Unicode special spaces.
+ 8. Update to Boost 1.90.0.
+ 9. Improve update themes feature: fix JavaScript.js edge case.
+10. Update javascript.js to better match javascript (embedded) in all themes.
+11. Function List: enhance for Perl & PHP; add for Nim.
+12. Fix comments and highlighting in TCL.
+13. Update perl keywords and autocomplete for 5.42.
+14. Improvement: display Find dialog status message with invisible characters warning.
+
 
 
 Get more info on
-https://notepad-plus-plus.org/downloads/v8.8.5/
+https://notepad-plus-plus.org/downloads/v8.9.2/
 
 
 Included plugins:
 
-1.  NppExport v0.4
-2.  Converter v4.6
-3.  Mime Tool v3.1
+ 1.  NppExport v0.4
+ 2.  Converter v4.7
+ 3.  Mime Tool v3.1
 
 
 Updater (Installer only):
 
-* WinGUp (for Notepad++) v5.3.3
+* WinGUp (for Notepad++) v5.4

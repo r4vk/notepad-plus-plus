@@ -19,17 +19,19 @@
 
 //************ Notepad++ version **************************
 
-#define NOTEPAD_PLUS_VERSION L"Notepad++ v8.8.5"
+#define NOTEPAD_PLUS_VERSION L"Notepad++ v8.9.2"
 
 // should be X.Y : ie. if VERSION_DIGITALVALUE == 4, 7, 1, 0 , then X = 4, Y = 71
 // ex : #define VERSION_VALUE L"5.63\0"
-#define VERSION_INTERNAL_VALUE L"8.85\0"
+#define VERSION_INTERNAL_VALUE L"8.92\0"
 
-#define VERSION_PRODUCT_VALUE L"8.8.5\0"
-#define VERSION_DIGITALVALUE 8, 8, 5, 0
+#define VERSION_PRODUCT_VALUE L"8.9.2\0"
+#define VERSION_DIGITALVALUE 8, 9, 2, 0
 
 //**********************************************************
 
+#define INFO_URL L"https://notepad-plus-plus.org/update/getDownloadUrl.php"
+#define FORCED_DOWNLOAD_DOMAIN L"https://github.com/notepad-plus-plus/notepad-plus-plus/"
 
 
 #ifndef IDC_STATIC
@@ -553,6 +555,9 @@
 #define IDC_DEBUGINFO_EDIT 1751
 #define IDC_DEBUGINFO_COPYLINK 1752
 
+#define IDD_COMMANDLINEARGSBOX 1755
+#define IDC_COMMANDLINEARGS_EDIT 1756
+
 #define IDD_DOSAVEORNOTBOX  1760
 #define IDC_DOSAVEORNOTTEXT 1761
 
@@ -751,6 +756,8 @@
 	#define NPPM_INTERNAL_CHANGETOOLBARCOLORABLESTATE   (NOTEPADPLUS_USER_INTERNAL + 108)
 	#define NPPM_INTERNAL_SQLBACKSLASHESCAPE            (NOTEPADPLUS_USER_INTERNAL + 109)
 	#define NPPM_INTERNAL_TOOLBARICONSCHANGED           (NOTEPADPLUS_USER_INTERNAL + 110)
+	#define NPPM_INTERNAL_SETTING_TABCOMPACTLABELLEN    (NOTEPADPLUS_USER_INTERNAL + 111)
+	#define NPPM_INTERNAL_INVISIBLECHARSINFINDWHAT      (NOTEPADPLUS_USER_INTERNAL + 112)
 
 // See Notepad_plus_msgs.h
 //#define NPPMSG   (WM_USER + 1000)

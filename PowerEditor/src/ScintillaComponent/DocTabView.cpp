@@ -15,19 +15,31 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-
 #include "DocTabView.h"
+
+#include <windows.h>
+
+#include <cwchar>
+
+#include "Buffer.h"
+#include "NppConstants.h"
+#include "Parameters.h"
 #include "ScintillaEditView.h"
+#include "TabBar.h"
+#include "resource.h"
 
-#ifndef _WIN32_IE
-#define _WIN32_IE	0x0600
-#endif //_WIN32_IE
+enum ImgIdx
+{
+	SAVED_IMG_INDEX,
+	UNSAVED_IMG_INDEX,
+	REDONLY_IMG_INDEX,
+	REDONLYSYS_IMG_INDEX,
+	MONITORING_IMG_INDEX,
+};
 
-int docTabIconIDs[] = { IDI_SAVED_ICON,  IDI_UNSAVED_ICON,  IDI_READONLY_ICON,  IDI_READONLYSYS_ICON,  IDI_MONITORING_ICON };
-int docTabIconIDs_darkMode[] = { IDI_SAVED_DM_ICON,  IDI_UNSAVED_DM_ICON,  IDI_READONLY_DM_ICON,  IDI_READONLYSYS_DM_ICON,  IDI_MONITORING_DM_ICON };
-int docTabIconIDs_alt[] = { IDI_SAVED_ALT_ICON, IDI_UNSAVED_ALT_ICON, IDI_READONLY_ALT_ICON, IDI_READONLYSYS_ALT_ICON, IDI_MONITORING_ICON };
-
-
+static constexpr int docTabIconIDs[] = { IDI_SAVED_ICON, IDI_UNSAVED_ICON, IDI_READONLY_ICON, IDI_READONLYSYS_ICON, IDI_MONITORING_ICON };
+static constexpr int docTabIconIDs_darkMode[] = { IDI_SAVED_DM_ICON, IDI_UNSAVED_DM_ICON, IDI_READONLY_DM_ICON, IDI_READONLYSYS_DM_ICON, IDI_MONITORING_DM_ICON };
+static constexpr int docTabIconIDs_alt[] = { IDI_SAVED_ALT_ICON, IDI_UNSAVED_ALT_ICON, IDI_READONLY_ALT_ICON, IDI_READONLYSYS_ALT_ICON, IDI_MONITORING_ICON };
 
 void DocTabView::init(HINSTANCE hInst, HWND parent, ScintillaEditView* pView, unsigned char indexChoice, unsigned char buttonsStatus)
 {
@@ -65,7 +77,7 @@ void DocTabView::addBuffer(BufferID buffer)
 		return;
 	if (getIndexByBuffer(buffer) != -1)	//no duplicates
 		return;
-	Buffer * buf = MainFileManager.getBufferByID(buffer);
+	const Buffer* buf = MainFileManager.getBufferByID(buffer);
 	TCITEM tie{};
 	tie.mask = TCIF_TEXT | TCIF_IMAGE | TCIF_PARAM;
 
@@ -73,7 +85,7 @@ void DocTabView::addBuffer(BufferID buffer)
 	if (_hasImgLst)
 		index = 0;
 	tie.iImage = index;
-	tie.pszText = const_cast<wchar_t *>(buf->getFileName());
+	tie.pszText = const_cast<wchar_t*>(buf->getCompactFileName());
 	tie.lParam = reinterpret_cast<LPARAM>(buffer);
 	::SendMessage(_hSelf, TCM_INSERTITEM, _nbItem++, reinterpret_cast<LPARAM>(&tie));
 	bufferUpdated(buf, BufferChangeMask);
@@ -84,7 +96,7 @@ void DocTabView::addBuffer(BufferID buffer)
 void DocTabView::closeBuffer(BufferID buffer)
 {
 	int indexToClose = getIndexByBuffer(buffer);
-	deletItemAt((size_t)indexToClose);
+	deletItemAt(static_cast<size_t>(indexToClose));
 	::SendMessage(_hParent, WM_SIZE, 0, 0);
 }
 
@@ -130,7 +142,7 @@ BufferID DocTabView::findBufferByName(const wchar_t * fullfilename) //-1 if not 
 		::SendMessage(_hSelf, TCM_GETITEM, i, reinterpret_cast<LPARAM>(&tie));
 		BufferID id = reinterpret_cast<BufferID>(tie.lParam);
 		const Buffer* buf = MainFileManager.getBufferByID(id);
-		if (wcsicmp(fullfilename, buf->getFullPathName()) == 0)
+		if (_wcsicmp(fullfilename, buf->getFullPathName()) == 0)
 		{
 			return id;
 		}
@@ -165,7 +177,7 @@ BufferID DocTabView::getBufferByIndex(size_t index)
 }
 
 
-void DocTabView::bufferUpdated(Buffer * buffer, int mask)
+void DocTabView::bufferUpdated(const Buffer* buffer, int mask)
 {
 	int index = getIndexByBuffer(buffer->getID());
 	if (index == -1)
@@ -202,7 +214,7 @@ void DocTabView::bufferUpdated(Buffer * buffer, int mask)
 		tie.pszText = encodedLabel;
 
 		{
-			const wchar_t* in = buffer->getFileName();
+			const wchar_t* in = buffer->getCompactFileName();
 			wchar_t* out = encodedLabel;
 
 			//This code will read in one character at a time and duplicate every first ampersand(&).
@@ -252,7 +264,7 @@ void DocTabView::reSizeTo(RECT & rc)
 {
 	NppParameters& nppParam = NppParameters::getInstance();
 	int borderWidth = nppParam.getSVP()._borderWidth;
-	NppGUI& nppGUI = nppParam.getNppGUI();
+	const NppGUI& nppGUI = nppParam.getNppGUI();
 	if (nppGUI._tabStatus & TAB_HIDE)
 	{
 		RECT rcTmp = rc;
@@ -270,4 +282,3 @@ void DocTabView::reSizeTo(RECT & rc)
 	}
 	SendMessage(_hParent, NPPM_INTERNAL_UPDATECLICKABLELINKS, reinterpret_cast<WPARAM>(_pView), 0);
 }
-

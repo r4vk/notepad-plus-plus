@@ -112,7 +112,7 @@ keep the following in mind:
         void method1();
         int method2() {
             return _x; // only one line code can be placed in .h as method definition
-        };
+        }
 
     private:
         int _x;

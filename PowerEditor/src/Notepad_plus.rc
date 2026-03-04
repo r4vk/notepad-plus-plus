@@ -548,6 +548,7 @@ BEGIN
             MENUITEM "Sort Lines As Integers Ascending",                 IDM_EDIT_SORTLINES_INTEGER_ASCENDING
             MENUITEM "Sort Lines As Decimals (Comma) Ascending",         IDM_EDIT_SORTLINES_DECIMALCOMMA_ASCENDING
             MENUITEM "Sort Lines As Decimals (Dot) Ascending",           IDM_EDIT_SORTLINES_DECIMALDOT_ASCENDING
+            MENUITEM "Sort Lines By Length Ascending",                   IDM_EDIT_SORTLINES_LENGTH_ASCENDING
             MENUITEM SEPARATOR
             MENUITEM "Sort Lines Lexicographically Descending",          IDM_EDIT_SORTLINES_LEXICOGRAPHIC_DESCENDING
             MENUITEM "Sort Lines Lex. Descending Ignoring Case",         IDM_EDIT_SORTLINES_LEXICO_CASE_INSENS_DESCENDING
@@ -555,6 +556,7 @@ BEGIN
             MENUITEM "Sort Lines As Integers Descending",                IDM_EDIT_SORTLINES_INTEGER_DESCENDING
             MENUITEM "Sort Lines As Decimals (Comma) Descending",        IDM_EDIT_SORTLINES_DECIMALCOMMA_DESCENDING
             MENUITEM "Sort Lines As Decimals (Dot) Descending",          IDM_EDIT_SORTLINES_DECIMALDOT_DESCENDING
+            MENUITEM "Sort Lines By Length Descending",                  IDM_EDIT_SORTLINES_LENGTH_DESCENDING
         END
         POPUP "Co&mment/Uncomment"
         BEGIN
@@ -602,10 +604,12 @@ BEGIN
         END
         POPUP "&On Selection"
         BEGIN
-            MENUITEM "Open File",           IDM_EDIT_OPENASFILE
-            MENUITEM "Open Containing Folder in Explorer",         IDM_EDIT_OPENINFOLDER
+            MENUITEM "Open File", IDM_EDIT_OPENASFILE
+            MENUITEM "Open Containing Folder in Explorer", IDM_EDIT_OPENINFOLDER
             MENUITEM SEPARATOR
-            MENUITEM "Search on Internet",      IDM_EDIT_SEARCHONINTERNET
+            MENUITEM "&Redact Selection █ (Shift: ●)", IDM_EDIT_REDACT_SELECTION
+            MENUITEM SEPARATOR
+            MENUITEM "Search on Internet", IDM_EDIT_SEARCHONINTERNET
             MENUITEM "Change Search Engine...", IDM_EDIT_CHANGESEARCHENGINE
         END
         MENUITEM SEPARATOR
@@ -631,7 +635,12 @@ BEGIN
         MENUITEM "Character &Panel",         IDM_EDIT_CHAR_PANEL
         MENUITEM "Clipboard &History",       IDM_EDIT_CLIPBOARDHISTORY_PANEL
         MENUITEM SEPARATOR
-        MENUITEM "Read-Only in Notepad++",            IDM_EDIT_TOGGLEREADONLY
+        POPUP "Read-&Only in Notepad++"
+        BEGIN
+            MENUITEM "Read-Only on Current Document",     IDM_EDIT_TOGGLEREADONLY
+            MENUITEM "Read-Only for All Documents",       IDM_EDIT_SETREADONLYFORALLDOCS
+            MENUITEM "Clear Read-Only for All Documents", IDM_EDIT_CLEARREADONLYFORALLDOCS
+        END
         MENUITEM "Read-Only Attribute in Windows",    IDM_EDIT_TOGGLESYSTEMREADONLY
     END
 
@@ -727,7 +736,7 @@ BEGIN
             MENUITEM "Paste to (Replace) Bookmarked Lines",    IDM_SEARCH_PASTEMARKEDLINES
             MENUITEM "Remove Bookmarked Lines",                IDM_SEARCH_DELETEMARKEDLINES
             MENUITEM "Remove Non-Bookmarked Lines",            IDM_SEARCH_DELETEUNMARKEDLINES
-            MENUITEM "Inverse Bookmark",                       IDM_SEARCH_INVERSEMARKS
+            MENUITEM "Inverse Bookmarks",                      IDM_SEARCH_INVERSEMARKS
         END
         MENUITEM SEPARATOR
         MENUITEM "Find characters in rang&e...",       IDM_SEARCH_FINDCHARINRANGE
@@ -1411,6 +1420,16 @@ BEGIN
     EDITTEXT        IDC_DEBUGINFO_EDIT,18,16,264,128,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | NOT WS_BORDER | WS_VSCROLL
     PUSHBUTTON      "&Copy debug info to clipboard",IDC_DEBUGINFO_COPYLINK,8,157,126,14
     DEFPUSHBUTTON   "OK",IDOK,125,175,50,14
+END
+
+IDD_COMMANDLINEARGSBOX DIALOGEX 0, 0, 435, 385
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE
+CAPTION "Command Line Arguments"
+FONT 8, L"MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_COMMANDLINEARGS_EDIT,10,10,420,345,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | NOT WS_BORDER | WS_VSCROLL
+    DEFPUSHBUTTON   "OK",IDOK,185,360,50,14
 END
 
 IDD_DOSAVEORNOTBOX DIALOGEX 0, 0, 312, 80

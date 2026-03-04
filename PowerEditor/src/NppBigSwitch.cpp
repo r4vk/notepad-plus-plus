@@ -23,7 +23,6 @@
 #include <atomic>
 #include "Notepad_plus_Window.h"
 #include "TaskListDlg.h"
-#include "ImageListSet.h"
 #include "ShortcutMapper.h"
 #include "ansiCharPanel.h"
 #include "clipboardHistoryPanel.h"
@@ -33,6 +32,7 @@
 #include "functionListPanel.h"
 #include "fileBrowser.h"
 #include "NppDarkMode.h"
+#include "NppConstants.h"
 
 using namespace std;
 
@@ -212,21 +212,16 @@ LRESULT Notepad_plus_Window::runProc(HWND hwnd, UINT message, WPARAM wParam, LPA
 			try
 			{
 				NppDarkMode::setDarkTitleBar(hwnd);
+				NppDarkMode::autoSubclassWindowMenuBar(hwnd);
+				NppDarkMode::autoSubclassCtlColor(hwnd);
 
 				_notepad_plus_plus_core._pPublicInterface = this;
 				LRESULT lRet = _notepad_plus_plus_core.init(hwnd);
 
 				if (NppDarkMode::isEnabled() && NppDarkMode::isExperimentalSupported())
 				{
-					RECT rcClient;
-					GetWindowRect(hwnd, &rcClient);
-
 					// Inform application of the frame change.
-					SetWindowPos(hwnd,
-						NULL,
-						rcClient.left, rcClient.top,
-						rcClient.right - rcClient.left, rcClient.bottom - rcClient.top,
-						SWP_FRAMECHANGED);
+					::SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 				}
 
 				SetOSAppRestart();
@@ -263,50 +258,14 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 	LRESULT result = FALSE;
 	NppParameters& nppParam = NppParameters::getInstance();
 
-	if (NppDarkMode::isDarkMenuEnabled() && NppDarkMode::isEnabled() && NppDarkMode::runUAHWndProc(hwnd, message, wParam, lParam, &result))
-	{
-		return result;
-	}
-
 	switch (message)
 	{
 		case WM_NCACTIVATE:
 		{
 			// Note: lParam is -1 to prevent endless loops of calls
 			::SendMessage(_dockingManager.getHSelf(), WM_NCACTIVATE, wParam, -1);
-			result = ::DefWindowProc(hwnd, message, wParam, lParam);
-			if (NppDarkMode::isDarkMenuEnabled() && NppDarkMode::isEnabled())
-			{
-				NppDarkMode::drawUAHMenuNCBottomLine(hwnd);
-			}
-
 			NppDarkMode::calculateTreeViewStyle();
-			return result;
-		}
-
-		case WM_NCPAINT:
-		{
-			result = ::DefWindowProc(hwnd, message, wParam, lParam);
-			if (NppDarkMode::isDarkMenuEnabled() && NppDarkMode::isEnabled())
-			{
-				NppDarkMode::drawUAHMenuNCBottomLine(hwnd);
-			}
-			return result;
-		}
-
-		case WM_ERASEBKGND:
-		{
-			if (NppDarkMode::isEnabled())
-			{
-				RECT rc{};
-				GetClientRect(hwnd, &rc);
-				::FillRect(reinterpret_cast<HDC>(wParam), &rc, NppDarkMode::getDlgBackgroundBrush());
-				return 0;
-			}
-			else
-			{
-				return ::DefWindowProc(hwnd, message, wParam, lParam);
-			}
+			return ::DefWindowProc(hwnd, message, wParam, lParam);
 		}
 
 		case WM_SETTINGCHANGE:
@@ -359,6 +318,11 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 					::SendMessage(hSubDlg, WM_COMMAND, IDC_RADIO_DARKMODE_DARKMODE, 0);
 				}
 			}
+
+			// let the Scintilla to update according to the possible changed OS settings
+			// (mouse wheel vertical & horizontal scroll amount, DirectWrite rendering params, base elements, style etc.)
+			::SendMessage(_mainEditView.getHSelf(), WM_SETTINGCHANGE, wParam, lParam);
+			::SendMessage(_subEditView.getHSelf(), WM_SETTINGCHANGE, wParam, lParam);
 
 			return ::DefWindowProc(hwnd, message, wParam, lParam);
 		}
@@ -525,7 +489,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			_findReplaceDlg.setSearchTextWithSettings();
 
 			if (isFirstTime)
-				_nativeLangSpeaker.changeDlgLang(_findReplaceDlg.getHSelf(), "Find");
+				_nativeLangSpeaker.changeFindReplaceDlgLang(_findReplaceDlg);
 
 			_findReplaceDlg.launchFindInProjectsDlg();
 			_findReplaceDlg.setProjectCheckmarks(NULL, (int) wParam);
@@ -838,7 +802,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 					}
 					else
 					{
-#ifdef DEBUG 
+#if !defined(NDEBUG)  
 						printStr(L"sizeof(CmdLineParams) != cmdLineParamsSize\rCmdLineParams is formed by an instance of another version,\rwhereas your CmdLineParams has been modified in this instance.");
 #endif
 					}
@@ -1013,8 +977,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			if (message == NPPM_GETCURRENTWORD)
 			{
 				auto txtW = _pEditView->getSelectedTextToWChar();
-				if (txtW)
-					wcscpy_s(str.get(), strSize, txtW);
+				wcscpy_s(str.get(), strSize, txtW.c_str());
 			}
 			else if (message == NPPM_GETCURRENTLINESTR)
 			{
@@ -1050,8 +1013,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			int hasSlash = 0;
 
 			auto txtW = _pEditView->getSelectedTextToWChar(); // this is either the selected text, or the word under the cursor if there is no selection
-			if (txtW)
-				wcscpy_s(str.get(), strSize, txtW);
+			wcscpy_s(str.get(), strSize, txtW.c_str());
 
 			hasSlash = FALSE;
 			for (int i = 0; str[i] != 0; i++)
@@ -1591,10 +1553,15 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 					m = ms[indexMacro].getMacro();
 				}
 
-				_pEditView->execute(SCI_BEGINUNDOACTION);
+				// to be able to roll back all the possible macro-steps changes at once, no matter how many times
+				// the current macro will be played, we need to establish HERE the list of the macro playback affected docs
+				// intended for the ending undo actions later and also close HERE all the opened undo actions of the docs
+				// (we do not use here an explicit begin undo action call, the macroPlayback() func handles all the needed undo action openings)
+				std::vector<Document> docs4EndUA;
+
 				for (;;)
 				{
-					macroPlayback(m);
+					macroPlayback(m, &docs4EndUA);
 					++counter;
 					if ( times >= 0 )
 					{
@@ -1634,7 +1601,26 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 						}
 					}
 				}
-				_pEditView->execute(SCI_ENDUNDOACTION);
+
+				// handle all the affected docs undo actions closing
+				Document invisSciDoc = _invisibleEditView.execute(SCI_GETDOCPOINTER); // store the view's original doc
+				while (!docs4EndUA.empty())
+				{
+					Document doc = docs4EndUA.back();
+					if (MainFileManager.getBufferFromDocument(doc) == BUFFER_INVALID)
+					{
+						// affected doc no longer exists (a macro step closed its associated Notepad++ tab/buffer),
+						// the ending undo action is not needed (until Notepad++ supports tab/buffer closing undo)
+					}
+					else
+					{
+						// complete the open undo action for existing doc object
+						_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, doc);
+						_invisibleEditView.execute(SCI_ENDUNDOACTION);
+					}
+					docs4EndUA.pop_back();
+				}
+				_invisibleEditView.execute(SCI_SETDOCPOINTER, 0, invisSciDoc); // restore
 			}
 			break;
 		}
@@ -3113,12 +3099,12 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 				std::vector<tTbData *> tbData = dockContainer[i]->getDataOfAllTb();
 				for (size_t j = 0, len2 = tbData.size() ; j < len2 ; ++j)
 				{
-					if (wcsicmp(moduleName, tbData[j]->pszModuleName) == 0)
+					if (_wcsicmp(moduleName, tbData[j]->pszModuleName) == 0)
 					{
 						if (!windowName)
 							return (LRESULT)tbData[j]->hClient;
 
-						if (wcsicmp(windowName, tbData[j]->pszName) == 0)
+						if (_wcsicmp(windowName, tbData[j]->pszName) == 0)
 							return (LRESULT)tbData[j]->hClient;
 					}
 				}
@@ -3333,7 +3319,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		case NPPM_ISTABBARHIDDEN:
 		{
 			NppGUI& nppGUI = nppParam.getNppGUI();
-			return nppGUI._tabStatus & TAB_HIDE;
+			return (nppGUI._tabStatus & TAB_HIDE) != 0;
 		}
 
 		case NPPM_HIDETOOLBAR:
@@ -3591,7 +3577,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			if (index < 0)
 				return FALSE;
 
-			*(reinterpret_cast<ExternalLexerAutoIndentMode*>(lParam)) = nppParam.getELCFromIndex(index)._autoIndentMode;
+			*(reinterpret_cast<ExternalLexerAutoIndentMode*>(lParam)) = nppParam.getELCFromIndex(index)->_autoIndentMode;
 			return TRUE;
 		}
 
@@ -3601,7 +3587,7 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 			if (index < 0)
 				return FALSE;
 
-			nppParam.getELCFromIndex(index)._autoIndentMode = static_cast<ExternalLexerAutoIndentMode>(lParam);
+			nppParam.getELCFromIndex(index)->_autoIndentMode = static_cast<ExternalLexerAutoIndentMode>(lParam);
 			return TRUE;
 		}
 
@@ -3806,6 +3792,26 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 		{
 			_lastRecentFileList.switchMode();
 			_lastRecentFileList.updateMenu();
+			break;
+		}
+
+		case NPPM_INTERNAL_SETTING_TABCOMPACTLABELLEN:
+		{
+			// reflect current tab-label length setting change in both views
+			const std::vector<DocTabView*> tabViews = { &_mainDocTab, &_subDocTab };
+			for (auto& pTabView : tabViews)
+			{
+				for (size_t i = 0; i < pTabView->nbItem(); ++i)
+				{
+					BufferID id = pTabView->getBufferByIndex(i);
+					if (id != BUFFER_INVALID)
+					{
+						Buffer* buf = MainFileManager.getBufferByID(id);
+						if (buf != nullptr)
+							buf->refreshCompactFileName();
+					}
+				}
+			}
 			break;
 		}
 
@@ -4414,3 +4420,4 @@ LRESULT Notepad_plus::process(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 	_pluginsManager.relayNppMessages(message, wParam, lParam);
 	return result;
 }
+

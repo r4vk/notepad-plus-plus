@@ -5,7 +5,7 @@ Translation note:
 2. All the comments are for explanation, they are not for translation.
 -->
 <NotepadPlus>
-	<Native-Langue name="English" filename="english_customizable.xml" version="8.8.1">
+	<Native-Langue name="English" filename="english_customizable.xml" version="8.9">
 		<Menu>
 			<Main>
 				<!-- Main Menu Entries -->
@@ -41,6 +41,7 @@ Translation note:
 					<Item subMenuId="edit-onSelection" name="&amp;On Selection"/>
 					<Item subMenuId="edit-multiSelectALL" name="Multi-select ALL"/>
 					<Item subMenuId="edit-multiSelectNext" name="Multi-select Next"/>
+					<Item subMenuId="edit-readonlyInNotepad++" name="Read-Only in Notepad++"/>
 					<Item subMenuId="search-changeHistory" name="Change History"/>
 					<Item subMenuId="search-markAll" name="Style &amp;All Occurrences of Token"/>
 					<Item subMenuId="search-markOne" name="Style &amp;One Token"/>
@@ -139,6 +140,8 @@ Translation note:
 					<Item id="42081" name="Sort Lines Lex. Descending Ignoring Case"/>
 					<Item id="42100" name="Sort Lines In Locale Order Ascending"/>
 					<Item id="42101" name="Sort Lines In Locale Order Descending"/>
+					<Item id="42104" name="Sort Lines By Length Ascending"/>
+					<Item id="42105" name="Sort Lines By Length Descending"/>
 					<Item id="42061" name="Sort Lines As Integers Ascending"/>
 					<Item id="42062" name="Sort Lines As Integers Descending"/>
 					<Item id="42063" name="Sort Lines As Decimals (Comma) Ascending"/>
@@ -157,6 +160,7 @@ Translation note:
 					<Item id="42072" name="&amp;ranDOm CasE"/>
 					<Item id="42073" name="Open File"/>
 					<Item id="42074" name="Open Containing Folder in Explorer"/>
+					<Item id="42106" name="Redact Selection █ (Shift: ●)"/>
 					<Item id="42075" name="Search on Internet"/>
 					<Item id="42076" name="Change Search Engine..."/>
 					<Item id="42090" name="Ignore Case &amp;&amp; Whole Word"/>
@@ -196,7 +200,9 @@ Translation note:
 					<Item id="42025" name="&amp;Save Currently Recorded Macro..."/>
 					<Item id="42026" name="Text Direction RTL"/>
 					<Item id="42027" name="Text Direction LTR"/>
-					<Item id="42028" name="Read-Only in Notepad++"/>
+					<Item id="42028" name="Read-Only on Current Document"/>
+					<Item id="42102" name="Read-Only for All Documents"/>
+					<Item id="42103" name="Clear Read-Only for All Documents"/>
 					<Item id="42029" name="Copy Current File Path"/>
 					<Item id="42030" name="Copy Current Filename"/>
 					<Item id="42031" name="Copy Current Dir. Path"/>
@@ -223,7 +229,7 @@ Translation note:
 					<Item id="43020" name="Paste to (Replace) Bookmarked Lines"/>
 					<Item id="43021" name="Remove Bookmarked Lines"/>
 					<Item id="43051" name="Remove Non-Bookmarked Lines"/>
-					<Item id="43050" name="Inverse Bookmark"/>
+					<Item id="43050" name="Inverse Bookmarks"/>
 					<Item id="43052" name="Find characters in rang&amp;e..."/>
 					<Item id="43053" name="Select All In-betw&amp;een {} [] or ()"/>
 					<Item id="43009" name="Go to &amp;Matching Brace"/>
@@ -998,6 +1004,7 @@ Translation note:
 					<Item id="6128" name="Alternate icons"/>
 					<Item id="6125" name="Behavior"/>
 					<Item id="6126" name="Look &amp;&amp; feel"/>
+					<Item id="6136" name="Max. tab label length:"/>
 				</Tabbar>
 
 				<Scintillas title="Editing 1">
@@ -1217,6 +1224,7 @@ Translation note:
 					<Item id="6910" name="Minimum Size for Auto-Checking &quot;In selection&quot;:"/>
 					<Item id="6913" name="Fill Find in Files Directory Field Based On Active Document"/>
 					<Item id="6916" name=": Max Characters to Auto-Fill Find Field from Selection"/>
+					<Item id="6917" name="Find in Files: Prefer on‑disk file content over open buffers"/>
 				</Searching>
 
 				<RecentFilesHistory title="Recent Files History">
@@ -1582,6 +1590,8 @@ Please test those commands and, if needed, re-edit them.
 Alternatively, you can downgrade to Notepad++ v8.5.2 and restore your previous data.
 Notepad++ will backup your old &quot;shortcuts.xml&quot; and save it as &quot;shortcuts.xml.v8.5.2.backup&quot;.
 Renaming &quot;shortcuts.xml.v8.5.2.backup&quot; -&gt; &quot;shortcuts.xml&quot;, your commands should be restored and work properly."/><!-- HowToReproduce: Close Notepad++, remove shortcuts.xml.v8.5.2.backup & v852ShortcutsCompatibilityWarning.xml if present, relaunch Notepad++, delete or modify a shortcuts via Shortcut Mapper, close Notepad++, then the message will show up -->
+			<FullReadOnlySavingForbidden title="Save failed" message="Cannot save file.
+The Notepad++ full read-only saving forbidden mode prevented the file from being saved."/>
 			<NotEnoughRoom4Saving title="Save failed" message="Failed to save file.
 It seems there's not enough space on disk to save file. Your file is not saved."/>
 			<FileInaccessibleUserSession title="File inaccessible" message="Some files from your manually-saved session &quot;$STR_REPLACE$&quot; are inaccessible. They can be opened as empty and read-only documents as placeholders.
@@ -1770,6 +1780,9 @@ Find in all files but exclude all folders log or logs recursively:
 			<find-status-scope-all value="in entire file"/>
 			<find-status-scope-backward value="from start-of-file to caret"/>
 			<find-status-scope-forward value="from caret to end-of-file"/>
+			<find-status-invisible-chars-findWhat value="Invisible characters in pasted &quot;Find what&quot; or &quot;Replace with&quot; content"/>
+			<find-status-invisible-chars-findWhat-tip value="Warning: Invisible characters in search (or replace) field.
+The text pasted into this field includes invisible (maybe line-ending) characters. If you proceed without deleting them, they will be included in the search (or replace) text."/>
 			<finder-find-in-finder value="Find in these search results..."/>
 			<finder-close-this value="Close these search results"/>
 			<finder-collapse-all value="Fold all"/>
@@ -1898,6 +1911,7 @@ If you select advanced mode but do not edit files in the aforementioned language
 			<max-len-on-search-tip value="Your input may exceed the limit allowed and could have been truncated, and it won't be saved for the next session."/>
 			<max-len-on-save-tip value="The length of your input is very long and may not be saved for your next session."/>
 			<goto-setting-tip value="Find your setting here"/>
+			<tabbar-tabcompactlabellen-tip value="Limits the visible length of long tab names. Enter to apply the given value. Value range: 1-257 characters (0 disables the truncation)."/>
 		</MiscStrings>
 	</Native-Langue>
 </NotepadPlus>

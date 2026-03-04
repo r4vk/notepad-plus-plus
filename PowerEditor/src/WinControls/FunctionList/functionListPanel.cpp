@@ -301,12 +301,12 @@ bool FunctionListPanel::serialize(const wstring & outputFilename)
 
 	for (const auto & info : _foundFuncInfos)
 	{
-		std::string leafName = wmc.wchar2char(info._data.c_str(), CP_ACP);
+		std::string leafName = info._data.c_str();
 
 		if (!info._data2.empty()) // node
 		{
 			bool isFound = false;
-			std::string nodeName = wmc.wchar2char(info._data2.c_str(), CP_ACP);
+			std::string nodeName = info._data2.c_str();
 
 			for (auto & i : j[nodesLabel])
 			{
@@ -390,7 +390,7 @@ void FunctionListPanel::reload()
 
 	for (size_t i = 0, len = _foundFuncInfos.size(); i < len; ++i)
 	{
-		addEntry(_foundFuncInfos[i]._data2.c_str(), _foundFuncInfos[i]._data.c_str(), _foundFuncInfos[i]._pos);
+		addEntry(string2wstring(_foundFuncInfos[i]._data2).c_str(), string2wstring(_foundFuncInfos[i]._data).c_str(), _foundFuncInfos[i]._pos);
 	}
 
 	HTREEITEM root = _treeView.getRoot();
@@ -853,8 +853,7 @@ intptr_t CALLBACK FunctionListPanel::run_dlgProc(UINT message, WPARAM wParam, LP
 			const DWORD tbExStyle = static_cast<DWORD>(::SendMessage(_hToolbarMenu, TB_GETEXTENDEDSTYLE, 0, 0));
 			::SendMessage(_hToolbarMenu, TB_SETEXTENDEDSTYLE, 0, tbExStyle | TBSTYLE_EX_DOUBLEBUFFER);
 
-			constexpr UINT_PTR idSubclassFunclstToolbar = 2;
-			::SetWindowSubclass(_hToolbarMenu, funclstToolbarProc, idSubclassFunclstToolbar, 0);
+			::SetWindowSubclass(_hToolbarMenu, funclstToolbarProc, static_cast<UINT_PTR>(SubclassID::first), 0);
 
 			const int iconSizeDyn = _dpiManager.scale(16);
 			constexpr int nbIcons = 3;
@@ -930,8 +929,7 @@ intptr_t CALLBACK FunctionListPanel::run_dlgProc(UINT message, WPARAM wParam, LP
 								2, 2, editWidth, editHeight,
 								_hToolbarMenu, reinterpret_cast<HMENU>(IDC_SEARCHFIELD_FUNCLIST), _hInst, 0 );
 
-			constexpr UINT_PTR idSubclassFunclstSearchEdit = 3;
-			::SetWindowSubclass(_hSearchEdit, funclstSearchEditProc, idSubclassFunclstSearchEdit, 0);
+			::SetWindowSubclass(_hSearchEdit, funclstSearchEditProc, static_cast<UINT_PTR>(SubclassID::first), 0);
 
 			if (_hFontSearchEdit == nullptr)
 			{
