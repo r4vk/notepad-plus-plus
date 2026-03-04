@@ -16,11 +16,11 @@
 
 
 #pragma once
-
+#ifdef _WIN32
 #include <windows.h>
-
 #include <commctrl.h>
 #include <tchar.h>
+#endif
 
 #include <algorithm>
 #include <cstdint>

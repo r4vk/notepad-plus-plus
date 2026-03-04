@@ -30,7 +30,7 @@
 #include <QPaintDevice>
 #include <QPainter>
 #include <QHash>
-#include <QTextCodec>
+#include <QTextCodec>  // From Qt5Compat in Qt 6
 
 namespace Scintilla::Internal {
 
